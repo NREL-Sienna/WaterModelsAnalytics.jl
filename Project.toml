@@ -1,0 +1,14 @@
+name = "WaterModelsAnalytics"
+uuid = "c8dd6cb9-700f-49b6-9aea-b063ad5cac2e"
+authors = ["Jonathan Stickel <jonathan.stickel@nrel.gov>"]
+version = "0.1.0"
+
+[deps]
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+InfrastructureModels = "2030c09a-7f63-5d83-885d-db604e0e9cc0"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+WaterModels = "7c60b362-08f4-5b14-8680-cd67a3e18348"
+
+[compat]
+PyCall = "1.9"
+julia = "^1"
