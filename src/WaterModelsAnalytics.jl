@@ -6,8 +6,10 @@ module WaterModelsAnalytics
 # imports
 import WaterModels
 # importing only the viridis color scheme for now; might allow the color scheme to be
-# selected by the user at some point, in which case need to import all of ColorShemes
+# selected by the user at some point, in which case will need to import all of ColorShemes
 import ColorSchemes.viridis
+
+import ColorTypes.HSV
 
 # python imports
 import PyCall
