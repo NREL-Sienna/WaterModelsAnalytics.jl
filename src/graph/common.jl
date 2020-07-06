@@ -7,8 +7,6 @@
     #   coordinates
 
 
-# heatmap([2D-array], c=:viridis)
-
 """
 Build networkx graph object from a WaterModels network dictionary parsed from an EPANET file.
 """
@@ -33,30 +31,22 @@ end # funtion build_graph
 
 
 function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
-
-    #### FIXME: change the approach: loop through the elevations of the nodes to get elmin
-    #### and elmax; _then_ do the loop to create the nodes with the desired attributes (it
-    #### is difficult to change/add node attributes once the node has been added)
+    # approach: loop through the elevations of the nodes to get elmin and elmax; _then_ do
+    # the loop to create the nodes with the desired attributes (although possible, it is
+    # awkward to change/add node attributes once the node has been added--use Pycall.set!())
 
     # determine max and min elevations 
-    elmin = 1e6 # is this high enough?
-    elmax = 0
+    elmin = 1e6 #  are these high/low enough?
+    elmax = 1e-6
     for (key,node) in nodes
         elmin = min(elmin, node["elevation"])
         elmax = max(elmax, node["elevation"])
     end
-    elspan = elmax - elmin
-    #scaled_elev = (elevs .- minimum(elevs))./(maximum(elevs) - minimum(elevs))
-    #collect(values(elevs))
+    # add elmin and elmax as graph attributes for use in creating a colorbar in
+    # colorbar (or via write_visualization)
+    PyCall.set!(G."graph", "elmin", elmin)
+    PyCall.set!(G."graph", "elmax", elmax)
     
-    # parse elevations of each node and assign a color based on a color scheme (viridis)
-    #import ColorSchemes
-    #ColorSchemes.viridis[scaled_elev]
-    # or
-    #import ColorSchemes.viridis # this is done now in WaterModelsAnalytics.jl, JJS 6/30/20
-    #viridis[scaled_elev]
-    # not sure how to loop over G.nodes and add more attributes for the color
-
     # create and populate networkx nodes
     for (key,node) in nodes
         node_type = node["source_id"][1]
@@ -70,10 +60,8 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
 
         # color by elevation
         elev = node["elevation"]
-        #scaled_elev = (elev - elmin)/elspan
-        #clr  = get(viridis, scaled_elev)
         clr = HSV(get(viridis, elev, (elmin, elmax)))
-        # convert clr to a string
+        # convert clr to a string that is in a form suitable for graphviz
         clrstr = string(clr.h/360)*" "*string(clr.s)*" "*string(clr.v)
         
         # change font color depending on the background color
@@ -86,7 +74,6 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
         G.add_node(node["index"], label=name, elevation=elev, style="filled",
                    fillcolor=clrstr, fontcolor=fntclr)
     end
-    
 end
 
 function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
@@ -107,8 +94,19 @@ Write out to a file a visualization for a WaterModels network dictionary parsed 
 EPANET file.
 """
 function write_visualization(data::Dict{String,Any}, basefilename::String)
+    # TODO:
+    # - provide an option to delete the intermediate files
+
+    gvfile = basefilename*".gv"
+    pdffile = basefilename*".pdf"
+    cbfile = basefilename*"_cbar.pdf"
+    outfile = basefilename*"_w_cb.pdf"
+    
     G = build_graph(data)
-    run_dot(G, basefilename*".gv")
+    run_dot(G, gvfile)
+    colorbar(G, cbfile)
+
+    run(`gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile=$outfile $cbfile $pdffile`)
 end
 
 
@@ -125,9 +123,9 @@ Run graphviz command `dot` on a graphviz file
 """
 function run_dot(filename::String)
     # TODO:
+    # - check that the filename ends in `.gv`
     # - allow specification of output filename
     # - allow arguments to be passed through to dot, such as the output file format
-    # - check that the filename ends in `.gv`
     
     basename = filename[1:end-3]
     outfile = basename*".pdf"
@@ -140,7 +138,6 @@ Use graphviz command `dot` to output a visualization to a file for a graph
 """
 function run_dot(G::PyCall.PyObject, filename::String)
     # TODO:
-    # - provide an option to delete the intermediate .gv file
     # - pass additional arguments through to run_dot(filename)
     
     write_dot(G, filename)
@@ -148,7 +145,20 @@ function run_dot(G::PyCall.PyObject, filename::String)
 end
 
 
-
+"""
+create and save a colorbar that represents the node elevations
+"""
+function colorbar(G::PyCall.PyObject, filename::String)
+    elmin = G.graph["elmin"]
+    elmax = G.graph["elmax"]
+    elmid = elmin + (elmax-elmin)/2
+    
+    x = reshape(collect(range(0, 1, length=100)), (1,:))
+    Plots.heatmap(x, c=:viridis, size=(500,100), legend=:none, yaxis=false)
+    Plots.plot!(xticks=(0:50:100, [elmin, elmid, elmax]))
+    Plots.title!("Elevation")
+    Plots.savefig(filename)
+end
 
 # """
 # Build networkx graph object from a WaterModels network ref object -- TBD

@@ -8,8 +8,9 @@ import WaterModels
 # importing only the viridis color scheme for now; might allow the color scheme to be
 # selected by the user at some point, in which case will need to import all of ColorShemes
 import ColorSchemes.viridis
-
 import ColorTypes.HSV
+
+import Plots
 
 # python imports
 import PyCall
@@ -26,6 +27,7 @@ include("graph/common.jl")
 export build_graph
 export write_dot
 export run_dot
+export colorbar
 export write_visualization
 
 end # module
