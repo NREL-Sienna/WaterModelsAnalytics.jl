@@ -9,12 +9,14 @@ import WaterModels
 # selected by the user at some point, in which case will need to import all of ColorShemes
 import ColorSchemes.viridis
 import ColorTypes.HSV
+import Statistics.mean
+using Printf
 
 import Plots
 
 # python imports
 import PyCall
-#nx = PyCall.pyimport("networkx") # not precompile safe?
+import PyCall.PyObject
 const nx = PyCall.PyNULL()
 function __init__()
     copy!(nx, PyCall.pyimport("networkx"))

@@ -1,10 +1,12 @@
 # TODO:
-    # - parse for valves and add labels for those links
-    # - parse for demand at nodes and add demand labels
-    # x add fill color for each node that scales with elevation
-    # - add colorbar for elevation colors (how to do it?)
-    # - add coordinates for the nodes and allow user to choose an output style that uses
-    #   coordinates
+# - parse for discrete valves and add labels for those links (valves as part of pipes are
+#   done)
+# x parse for demand at nodes and add demand labels
+# x add fill color for each node that scales with elevation
+# x add colorbar for elevation colors (how to do it?)
+# - add an indication of edge length
+# - add coordinates for the nodes and allow user to choose an output style that uses
+#   coordinates
 
 
 """
@@ -18,10 +20,9 @@ function build_graph(data::Dict{String,Any})
     
     G = nx.MultiDiGraph()
 
-    # populate the graph with water network data
     add_nodes!(G, data["node"])
-
-      
+    demand!(G, data["junction"])
+    
     add_links!(G, data["pipe"])
     add_links!(G, data["pump"])
     add_links!(G, data["valve"])
@@ -30,14 +31,14 @@ function build_graph(data::Dict{String,Any})
 end # funtion build_graph
 
 
-function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
-    # approach: loop through the elevations of the nodes to get elmin and elmax; _then_ do
-    # the loop to create the nodes with the desired attributes (although possible, it is
-    # awkward to change/add node attributes once the node has been added--use Pycall.set!())
+function add_nodes!(G::PyCall.PyObject, nodes::Union{Dict{String,Any}, Dict{Int64,Any}})
+    # TODO:
+    # - use time-series information for reservoir (if it exists) to set the reservoir
+    #   elevation
 
     # determine max and min elevations 
-    elmin = 1e6 #  are these high/low enough?
-    elmax = 1e-6
+    elmin = 1e16 
+    elmax = 1e-16
     for (key,node) in nodes
         elmin = min(elmin, node["elevation"])
         elmax = max(elmax, node["elevation"])
@@ -70,22 +71,68 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
         else
             fntclr = "black"
         end
-        
+
         G.add_node(node["index"], label=name, elevation=elev, style="filled",
                    fillcolor=clrstr, fontcolor=fntclr)
     end
 end
 
-function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
+
+""" Add demand label for junctions. Using "base demand" for now, but this may change """
+function demand!(G::PyCall.PyObject, junctions::Union{Dict{String,Any}, Dict{Int64,Any}})
+    for (key,junction) in junctions
+        #### are the keys in data["node"] alwyas equal to string(index) ??? will
+        #### presume so for now, JJS 7/7/20
+        if typeof(key) == String
+            index = parse(Int, key)
+        else
+            index = key
+        end
+        name = get(G.nodes, index)["label"]
+        #dem = @sprintf("%2.2g", mean(junction["demand"])) # not applicable for model network
+        dem = @sprintf("%2.2g", junction["demand"])
+        PyCall.set!(get(G."nodes", PyObject, index), "label", name*"\nd = "*dem)
+    end
+end
+
+
+function add_links!(G::PyCall.PyObject, links::Union{Dict{String,Any}, Dict{Int64,Any}})
     for (key,link) in links
         link_type = link["source_id"][1]
         if link_type == "pump"
             G.add_edge(link["node_fr"], link["node_to"], link["index"],
                        label="P "*link["name"], color="red", style="bold")
-        else
-            G.add_edge(link["node_fr"], link["node_to"], link["index"])
+        elseif link_type == "valve"
+            println("valves not yet implemented")
+        else # it is a pipe
+            type = link["status"]
+            if type != "Open"
+                G.add_edge(link["node_fr"], link["node_to"], link["index"], label=type)
+            else
+                G.add_edge(link["node_fr"], link["node_to"], link["index"])
+            end
         end
     end
+end
+
+
+
+"""
+Build networkx graph object from a WaterModels network "ref" object 
+"""
+function build_graph(modnet::Dict{Symbol,Any})
+    G = nx.MultiDiGraph()
+
+    add_nodes!(G, modnet[:node])
+    demand!(G, modnet[:junction])
+    
+    add_links!(G, modnet[:pipe])
+    add_links!(G, modnet[:check_valve])
+    add_links!(G, modnet[:shutoff_valve])
+    add_links!(G, modnet[:pump])
+    add_links!(G, modnet[:valve])
+    
+    return G
 end
 
 
@@ -93,7 +140,8 @@ end
 Write out to a file a visualization for a WaterModels network dictionary parsed from an
 EPANET file.
 """
-function write_visualization(data::Dict{String,Any}, basefilename::String)
+function write_visualization(data::Union{Dict{String,Any}, Dict{Symbol,Any}},
+                             basefilename::String)
     # TODO:
     # - provide an option to delete the intermediate files
 
@@ -106,6 +154,7 @@ function write_visualization(data::Dict{String,Any}, basefilename::String)
     run_dot(G, gvfile)
     colorbar(G, cbfile)
 
+    # add option -dAutoRotatePages=/None ?
     run(`gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile=$outfile $cbfile $pdffile`)
 end
 
@@ -159,10 +208,3 @@ function colorbar(G::PyCall.PyObject, filename::String)
     Plots.title!("Elevation")
     Plots.savefig(filename)
 end
-
-# """
-# Build networkx graph object from a WaterModels network ref object -- TBD
-# """
-# function build_graph(data::Dict{Symbol,Any})
-
-# end
