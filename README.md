@@ -10,8 +10,8 @@ Currently requires Python's networkx and graphviz dot command.
 Basic working example:
 
 ```
-# import python's networkx-- must do this first due to a bug with PyCall,
-# networkx and JuMP
+# import python's networkx -- must do this first due to a bug between PyCall, networkx, and
+# JuMP
 import PyCall
 nx = PyCall.pyimport("networkx")
 
@@ -21,8 +21,14 @@ import WaterModelsAnalytics
 const WMA = WaterModelsAnalytics
 
 # change as needed, or use pathof(WaterModels)
-basepath = "../../related_repos/WaterModels.jl/"
+basepath = "../../related_repos/WaterModels.jl/" 
 data = WM.parse_file(basepath*"test/data/epanet/van_zyl.inp")
+wm = WM.instantiate_model(data, WM.MICPWaterModel, WM.build_wf,
+                          ext=Dict(:pump_breakpoints=>0))
 
-WMA.write_visualization(data, "test")
+WMA.write_visualization(data, "epanet_graph")
+
+modnet = wm.ref[:nw][0]
+WMA.write_visualization(modnet, "wm_graph")
+
 ```
