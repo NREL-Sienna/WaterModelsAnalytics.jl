@@ -78,7 +78,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Union{Dict{String,Any}, Dict{Int6
 end
 
 
-""" Add demand label for junctions. Using "base demand" for now, but this may change """
+""" Add demand label for junctions."""
 function demand!(G::PyCall.PyObject, junctions::Union{Dict{String,Any}, Dict{Int64,Any}})
     for (key,junction) in junctions
         #### are the keys in data["node"] alwyas equal to string(index) ??? will
@@ -141,10 +141,7 @@ Write out to a file a visualization for a WaterModels network dictionary parsed 
 EPANET file.
 """
 function write_visualization(data::Union{Dict{String,Any}, Dict{Symbol,Any}},
-                             basefilename::String)
-    # TODO:
-    # - provide an option to delete the intermediate files
-
+                             basefilename::String, del_files::Bool=true)
     gvfile = basefilename*".gv"
     pdffile = basefilename*".pdf"
     cbfile = basefilename*"_cbar.pdf"
@@ -156,6 +153,10 @@ function write_visualization(data::Union{Dict{String,Any}, Dict{Symbol,Any}},
 
     # add option -dAutoRotatePages=/None ?
     run(`gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile=$outfile $cbfile $pdffile`)
+    # delete the intermediate files
+    if del_files
+        run(`rm $gvfile $pdffile $cbfile`)
+    end
 end
 
 
