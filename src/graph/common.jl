@@ -4,7 +4,7 @@
 # x parse for demand at nodes and add demand labels
 # x add fill color for each node that scales with elevation
 # x add colorbar for elevation colors (how to do it?)
-# - add an indication of edge length
+# x add an indication of edge length
 # - add coordinates for the nodes and allow user to choose an output style that uses
 #   coordinates
 
@@ -105,11 +105,13 @@ function add_links!(G::PyCall.PyObject, links::Union{Dict{String,Any}, Dict{Int6
         elseif link_type == "valve"
             println("valves not yet implemented")
         else # it is a pipe
+            length = @sprintf("%2.2g", link["length"])
             type = link["status"]
             if type != "Open"
-                G.add_edge(link["node_fr"], link["node_to"], link["index"], label=type)
+                G.add_edge(link["node_fr"], link["node_to"], link["index"],
+                           label=type*"\n"*length)
             else
-                G.add_edge(link["node_fr"], link["node_to"], link["index"])
+                G.add_edge(link["node_fr"], link["node_to"], link["index"], label=length)
             end
         end
     end
