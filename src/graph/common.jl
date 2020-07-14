@@ -5,8 +5,8 @@
 # x add fill color for each node that scales with elevation
 # x add colorbar for elevation colors (how to do it?)
 # x add an indication of edge length
-# - add coordinates for the nodes and allow user to choose an output style that uses
-#   coordinates
+# x add coordinates for the nodes
+# - allow user to choose an output style that uses coordinates
 
 
 """
@@ -36,18 +36,35 @@ function add_nodes!(G::PyCall.PyObject, nodes::Union{Dict{String,Any}, Dict{Int6
     # - use time-series information for reservoir (if it exists) to set the reservoir
     #   elevation
 
-    # determine max and min elevations 
+    # determine max and min elevations and coordinates
     elmin = 1e16 
     elmax = 1e-16
+    xmin = 1e16 
+    xmax = 1e-16
+    ymin = 1e16 
+    ymax = 1e-16
     for (key,node) in nodes
         elmin = min(elmin, node["elevation"])
         elmax = max(elmax, node["elevation"])
+        if haskey(node, "coordinates")
+            coord = node["coordinates"]
+            xmin = min(xmin, coord[1])
+            xmax = max(xmax, coord[1])
+            ymin = min(ymin, coord[2])
+            ymax = max(ymax, coord[2])
+        end
     end
+    xspan = xmax-xmin
+    yspan = ymax-ymin
+    # scale to use to get "good" position results with graphviz output -- should
+    # calculate this systematically from the number of nodes?
+    scale = 20
+    
     # add elmin and elmax as graph attributes for use in creating a colorbar in
     # colorbar (or via write_visualization)
     PyCall.set!(G."graph", "elmin", elmin)
     PyCall.set!(G."graph", "elmax", elmax)
-    
+
     # create and populate networkx nodes
     for (key,node) in nodes
         node_type = node["source_id"][1]
@@ -58,7 +75,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Union{Dict{String,Any}, Dict{Int6
         else
             name = node["name"]
         end
-
+        
         # color by elevation
         elev = node["elevation"]
         clr = HSV(get(viridis, elev, (elmin, elmax)))
@@ -72,8 +89,18 @@ function add_nodes!(G::PyCall.PyObject, nodes::Union{Dict{String,Any}, Dict{Int6
             fntclr = "black"
         end
 
-        G.add_node(node["index"], label=name, elevation=elev, style="filled",
-                   fillcolor=clrstr, fontcolor=fntclr)
+        if haskey(node, "coordinates")
+            coord = node["coordinates"]
+            xval = scale*(coord[1] - xmin)/xspan
+            yval = scale*(coord[2] - ymin)/yspan
+            posstr = string(xval)*","*string(yval)*"!" # exclamation point forces exact
+                                                     # positioning when using Neato
+            G.add_node(node["index"], label=name, elevation=elev, pos=posstr,
+                       style="filled", fillcolor=clrstr, fontcolor=fntclr)
+        else
+            G.add_node(node["index"], label=name, elevation=elev, style="filled",
+                       fillcolor=clrstr, fontcolor=fntclr)
+        end
     end
 end
 
@@ -211,3 +238,4 @@ function colorbar(G::PyCall.PyObject, filename::String)
     Plots.title!("Elevation")
     Plots.savefig(filename)
 end
+    
