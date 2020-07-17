@@ -16,10 +16,10 @@ import Plots
 
 # python imports
 import PyCall
-import PyCall.PyObject
-const nx = PyCall.PyNULL()
+import PyCall: PyObject, @pycall
+const pgv = PyCall.PyNULL()
 function __init__()
-    copy!(nx, PyCall.pyimport("networkx"))
+    copy!(pgv, PyCall.pyimport("pygraphviz"))
 end
 
 # includes

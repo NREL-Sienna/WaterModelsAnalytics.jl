@@ -5,16 +5,11 @@ WaterModelsAnalytics.jl is a Julia package to to support WaterModels.jl (and
 possibly WaterSystems.jl) with network graph visualizations (and possibly other
 graphics at a later version).
 
-Currently requires Python's networkx and graphviz dot command.
+Currently requires Python's pygraphviz and graphviz dot command.
 
 Basic working example:
 
 ```
-# import python's networkx -- must do this first due to a bug between PyCall, networkx, and
-# JuMP
-import PyCall
-nx = PyCall.pyimport("networkx")
-
 import WaterModels
 const WM = WaterModels
 import WaterModelsAnalytics
