@@ -15,18 +15,16 @@ module WaterModelsAnalytics
 
     import Plots
 
-    # python imports
+    # Python imports.
     import PyCall
-    import PyCall.PyObject
-    const nx = PyCall.PyNULL()
+    import PyCall: PyObject, @pycall
+    const pgv = PyCall.PyNULL()
     function __init__()
-        copy!(nx, PyCall.pyimport("networkx"))
+        copy!(pgv, PyCall.pyimport("pygraphviz"))
     end
 
-    # includes
     include("graph/common.jl")
 
-    # exports
     export build_graph
     export write_dot
     export run_dot
