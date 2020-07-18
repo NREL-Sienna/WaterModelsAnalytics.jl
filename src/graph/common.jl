@@ -204,7 +204,7 @@ function colorbar(G::PyCall.PyObject, filename::String)
     elmax = parse(Float64, get(G.graph_attr, "elmax"))
     elmid = elmin + (elmax-elmin)/2
     
-    x = reshape(collect(range(0, 1, length=100)), (1,:))
+    x = reshape(collect(range(0.0, stop=1.0, length=100)), (1,:))
     Plots.heatmap(x, c=:viridis, size=(500,100), legend=:none, yaxis=false)
     Plots.plot!(xticks=(0:50:100, [elmin, elmid, elmax]))
     Plots.title!("Elevation")

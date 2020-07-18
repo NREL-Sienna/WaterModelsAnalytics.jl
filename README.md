@@ -1,6 +1,5 @@
 # WaterModelsAnalytics.jl
 
-
 WaterModelsAnalytics.jl is a Julia package to to support WaterModels.jl (and
 possibly WaterSystems.jl) with network graph visualizations (and possibly other
 graphics at a later version).

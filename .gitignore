@@ -1,5 +1,5 @@
-# julia stuff
 Manifest.toml
+.DS_Store
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
@@ -10,9 +10,3 @@ docs/site/
 docs/.documenter
 .project
 .tags
-
-# backup files
-*~
-*.bak
-
-.DS_Store

@@ -1,12 +1,13 @@
 name = "WaterModelsAnalytics"
 uuid = "c8dd6cb9-700f-49b6-9aea-b063ad5cac2e"
 authors = ["Jonathan Stickel <jonathan.stickel@nrel.gov>"]
+repo = "https://github.com/NREL-SIIP/WaterModelsAnalytics.jl"
 version = "0.1.0"
 
 [deps]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
-InfrastructureModels = "2030c09a-7f63-5d83-885d-db604e0e9cc0"
+Memento = "f28f55f0-a522-5efc-85c2-fe41dfb9b2d9"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
@@ -14,5 +15,16 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 WaterModels = "7c60b362-08f4-5b14-8680-cd67a3e18348"
 
 [compat]
-PyCall = "1.9"
+ColorSchemes = "~3.9"
+ColorTypes = "~0.10"
+Memento = "~1.0, ~1.1"
+Plots = "~1.4"
+PyCall = "~1.91"
+WaterModels = "~0.3"
 julia = "^1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
