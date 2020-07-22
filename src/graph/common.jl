@@ -18,7 +18,7 @@ function build_graph(data::Dict{String,Any})
     # TODO:
     # - check that input dictionary has the expected fields
     
-    G = nx.MultiDiGraph()
+    G = pgv.AGraph(strict=false, directed=true)
 
     add_nodes!(G, data["node"])
     demand!(G, data["junction"])
@@ -62,8 +62,8 @@ function add_nodes!(G::PyCall.PyObject, nodes::Union{Dict{String,Any}, Dict{Int6
     
     # add elmin and elmax as graph attributes for use in creating a colorbar in
     # colorbar (or via write_visualization)
-    PyCall.set!(G."graph", "elmin", elmin)
-    PyCall.set!(G."graph", "elmax", elmax)
+    PyCall.set!(G."graph_attr", "elmin", elmin)
+    PyCall.set!(G."graph_attr", "elmax", elmax)
 
     # create and populate networkx nodes
     for (key,node) in nodes
@@ -110,15 +110,17 @@ function demand!(G::PyCall.PyObject, junctions::Union{Dict{String,Any}, Dict{Int
     for (key,junction) in junctions
         #### are the keys in data["node"] alwyas equal to string(index) ??? will
         #### presume so for now, JJS 7/7/20
-        if typeof(key) == String
-            index = parse(Int, key)
-        else
-            index = key
-        end
-        name = get(G.nodes, index)["label"]
-        #dem = @sprintf("%2.2g", mean(junction["demand"])) # not applicable for model network
+        ## I don't think this bit is needed with pygraphviz, JJS 7/17/20
+        # if typeof(key) == String
+        #     index = parse(Int, key)
+        # else
+        #     index = key
+        # end
+
+        nodeobj = @pycall G."get_node"(key)::PyObject
+        name = get(nodeobj.attr, "label")
         dem = @sprintf("%2.2g", junction["demand"])
-        PyCall.set!(get(G."nodes", PyObject, index), "label", name*"\nd = "*dem)
+        PyCall.set!(nodeobj.attr, "label", name*"\nd = "*dem)
     end
 end
 
@@ -150,8 +152,8 @@ end
 Build networkx graph object from a WaterModels network "ref" object 
 """
 function build_graph(modnet::Dict{Symbol,Any})
-    G = nx.MultiDiGraph()
-
+    G = pgv.AGraph(strict=false, directed=true)
+    
     add_nodes!(G, modnet[:node])
     demand!(G, modnet[:junction])
     
@@ -165,62 +167,32 @@ function build_graph(modnet::Dict{Symbol,Any})
 end
 
 
-"""
+""" 
 Write out to a file a visualization for a WaterModels network dictionary parsed from an
-EPANET file.
+EPANET file. `basefilename` should not include an extension and will be appended with
+`_w_cb.pdf` in the output file.
 """
 function write_visualization(data::Union{Dict{String,Any}, Dict{Symbol,Any}},
                              basefilename::String, del_files::Bool=true)
-    gvfile = basefilename*".gv"
+    # TODO:
+    # - allow different graphviz programs to be used, e.g., neato
+    # - allow arguments to be passed through to graphviz
+
+    #gvfile = basefilename*".gv"
     pdffile = basefilename*".pdf"
     cbfile = basefilename*"_cbar.pdf"
     outfile = basefilename*"_w_cb.pdf"
     
     G = build_graph(data)
-    run_dot(G, gvfile)
+    G.draw(pdffile, prog="dot")
     colorbar(G, cbfile)
 
     # add option -dAutoRotatePages=/None ?
     run(`gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile=$outfile $cbfile $pdffile`)
     # delete the intermediate files
     if del_files
-        run(`rm $gvfile $pdffile $cbfile`)
+        run(`rm $pdffile $cbfile`)
     end
-end
-
-
-"""
-Write a graph out to a file in graphviz dot syntax.
-"""
-function write_dot(G::PyCall.PyObject, filename::String)
-    nx.nx_agraph.write_dot(G, filename)
-end
-
-
-"""
-Run graphviz command `dot` on a graphviz file
-"""
-function run_dot(filename::String)
-    # TODO:
-    # - check that the filename ends in `.gv`
-    # - allow specification of output filename
-    # - allow arguments to be passed through to dot, such as the output file format
-    
-    basename = filename[1:end-3]
-    outfile = basename*".pdf"
-    run(`dot -Tpdf $filename -o $outfile`)
-end
-
-
-"""
-Use graphviz command `dot` to output a visualization to a file for a graph
-"""
-function run_dot(G::PyCall.PyObject, filename::String)
-    # TODO:
-    # - pass additional arguments through to run_dot(filename)
-    
-    write_dot(G, filename)
-    run_dot(filename)
 end
 
 
@@ -228,14 +200,52 @@ end
 create and save a colorbar that represents the node elevations
 """
 function colorbar(G::PyCall.PyObject, filename::String)
-    elmin = G.graph["elmin"]
-    elmax = G.graph["elmax"]
+    elmin = parse(Float64, get(G.graph_attr, "elmin"))
+    elmax = parse(Float64, get(G.graph_attr, "elmax"))
     elmid = elmin + (elmax-elmin)/2
     
-    x = reshape(collect(range(0, 1, length=100)), (1,:))
+    x = reshape(collect(range(0.0, stop=1.0, length=100)), (1,:))
     Plots.heatmap(x, c=:viridis, size=(500,100), legend=:none, yaxis=false)
     Plots.plot!(xticks=(0:50:100, [elmin, elmid, elmax]))
     Plots.title!("Elevation")
     Plots.savefig(filename)
 end
+
+
+## these functions are legacy from networkx use and are not needed with pygraphviz; keeping
+## around to make sure they are not useful in some form, JJS 7/17/20
+
+# """
+# Write a graph out to a file in graphviz dot syntax.
+# """
+# function write_dot(G::PyCall.PyObject, filename::String)
+#     nx.nx_agraph.write_dot(G, filename)
+# end
+
+
+# """
+# Run graphviz command `dot` on a graphviz file
+# """
+# function run_dot(filename::String)
+#     # TODO:
+#     # - check that the filename ends in `.gv`
+#     # - allow specification of output filename
+#     # - allow arguments to be passed through to dot, such as the output file format
     
+#     basename = filename[1:end-3]
+#     outfile = basename*".pdf"
+#     run(`dot -Tpdf $filename -o $outfile`)
+# end
+
+
+# """
+# Use graphviz command `dot` to output a visualization to a file for a graph
+# """
+# function run_dot(G::PyCall.PyObject, filename::String)
+#     # TODO:
+#     # - pass additional arguments through to run_dot(filename)
+    
+#     write_dot(G, filename)
+#     run_dot(filename)
+# end
+
