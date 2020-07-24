@@ -52,8 +52,7 @@ module WaterModelsAnalytics
     include("graph/common.jl")
 
     export build_graph
-    export write_dot
-    export run_dot
+    export write_graph
     export colorbar
     export write_visualization
 end

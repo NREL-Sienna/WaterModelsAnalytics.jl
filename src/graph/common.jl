@@ -31,10 +31,8 @@ function build_graph(data::Dict{String,Any})
 end # funtion build_graph
 
 
-function add_nodes!(G::PyCall.PyObject, nodes::Union{Dict{String,Any}, Dict{Int64,Any}})
-    # TODO:
-    # - use time-series information for reservoir (if it exists) to set the reservoir
-    #   elevation
+function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
+    # This needs to be redone. Nodes are now disctinct from junctions, tanks, and reservoirs. JJS 7/22/20
 
     # determine max and min elevations and coordinates
     elmin = 1e16 
@@ -106,7 +104,7 @@ end
 
 
 """ Add demand label for junctions."""
-function demand!(G::PyCall.PyObject, junctions::Union{Dict{String,Any}, Dict{Int64,Any}})
+function demand!(G::PyCall.PyObject, junctions::Dict{String,Any})
     for (key,junction) in junctions
         #### are the keys in data["node"] alwyas equal to string(index) ??? will
         #### presume so for now, JJS 7/7/20
@@ -125,7 +123,7 @@ function demand!(G::PyCall.PyObject, junctions::Union{Dict{String,Any}, Dict{Int
 end
 
 
-function add_links!(G::PyCall.PyObject, links::Union{Dict{String,Any}, Dict{Int64,Any}})
+function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
     for (key,link) in links
         link_type = link["source_id"][1]
         if link_type == "pump"
@@ -147,36 +145,16 @@ function add_links!(G::PyCall.PyObject, links::Union{Dict{String,Any}, Dict{Int6
 end
 
 
-
-"""
-Build networkx graph object from a WaterModels network "ref" object 
-"""
-function build_graph(modnet::Dict{Symbol,Any})
-    G = pgv.AGraph(strict=false, directed=true)
-    
-    add_nodes!(G, modnet[:node])
-    demand!(G, modnet[:junction])
-    
-    add_links!(G, modnet[:pipe])
-    add_links!(G, modnet[:check_valve])
-    add_links!(G, modnet[:shutoff_valve])
-    add_links!(G, modnet[:pump])
-    add_links!(G, modnet[:valve])
-    
-    return G
-end
-
-
 """ 
 Write out to a file a visualization for a WaterModels network dictionary parsed from an
 EPANET file. `basefilename` should not include an extension and will be appended with
-`_w_cb.pdf` in the output file.
+`_w_cb.pdf` in the final output file, which is a multi-page PDF. Use `del_files=false` to
+keep the intermediate files.
 """
-function write_visualization(data::Union{Dict{String,Any}, Dict{Symbol,Any}},
-                             basefilename::String, del_files::Bool=true)
+function write_visualization(data::Dict{String,Any}, basefilename::String;
+                             del_files::Bool=true)
     # TODO:
-    # - allow different graphviz programs to be used, e.g., neato
-    # - allow arguments to be passed through to graphviz
+    # - pass through arguments to `write_graph`
 
     #gvfile = basefilename*".gv"
     pdffile = basefilename*".pdf"
@@ -184,7 +162,7 @@ function write_visualization(data::Union{Dict{String,Any}, Dict{Symbol,Any}},
     outfile = basefilename*"_w_cb.pdf"
     
     G = build_graph(data)
-    G.draw(pdffile, prog="dot")
+    write_graph(G, pdffile)
     colorbar(G, cbfile)
 
     # add option -dAutoRotatePages=/None ?
@@ -193,6 +171,17 @@ function write_visualization(data::Union{Dict{String,Any}, Dict{Symbol,Any}},
     if del_files
         run(`rm $pdffile $cbfile`)
     end
+end
+
+
+"""
+Use graphviz (via pygraphviz) to output a visualization to a file for a graph
+"""
+function write_graph(G::PyCall.PyObject, filename::String)
+    # TODO:
+    # - allow different graphviz programs to be used, e.g., neato
+    # - allow other arguments to be passed through to graphviz
+    G.draw(filename, prog="dot")
 end
 
 
@@ -210,42 +199,3 @@ function colorbar(G::PyCall.PyObject, filename::String)
     Plots.title!("Elevation")
     Plots.savefig(filename)
 end
-
-
-## these functions are legacy from networkx use and are not needed with pygraphviz; keeping
-## around to make sure they are not useful in some form, JJS 7/17/20
-
-# """
-# Write a graph out to a file in graphviz dot syntax.
-# """
-# function write_dot(G::PyCall.PyObject, filename::String)
-#     nx.nx_agraph.write_dot(G, filename)
-# end
-
-
-# """
-# Run graphviz command `dot` on a graphviz file
-# """
-# function run_dot(filename::String)
-#     # TODO:
-#     # - check that the filename ends in `.gv`
-#     # - allow specification of output filename
-#     # - allow arguments to be passed through to dot, such as the output file format
-    
-#     basename = filename[1:end-3]
-#     outfile = basename*".pdf"
-#     run(`dot -Tpdf $filename -o $outfile`)
-# end
-
-
-# """
-# Use graphviz command `dot` to output a visualization to a file for a graph
-# """
-# function run_dot(G::PyCall.PyObject, filename::String)
-#     # TODO:
-#     # - pass additional arguments through to run_dot(filename)
-    
-#     write_dot(G, filename)
-#     run_dot(filename)
-# end
-
