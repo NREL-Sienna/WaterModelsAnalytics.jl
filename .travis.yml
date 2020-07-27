@@ -9,7 +9,7 @@ julia:
 addons:
   apt:
     packages:
-    - python-pygraphviz
+    - python3-pygraphviz
 codecov: true
 jobs:
   allow_failures:
