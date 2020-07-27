@@ -6,6 +6,10 @@ julia:
   - 1.0
   - 1.4
   - nightly
+addons:
+  apt:
+    packages:
+    - python-pygraphviz
 codecov: true
 jobs:
   allow_failures:
