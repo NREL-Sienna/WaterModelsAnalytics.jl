@@ -21,7 +21,7 @@ addons:
       - ghostscript
     update: true
 before_script:
-  - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then python3 -m install pygraphviz; fi
+  - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then python3 -m pip install pygraphviz; fi
 codecov: true
 jobs:
   allow_failures:
