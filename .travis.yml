@@ -16,7 +16,10 @@ addons:
       - graphviz
       - ghostscript
 before_script:
-  - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then pip install pygraphviz; fi
+  - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then \
+        pip install --install-option="--include-path=/usr/local/Cellar/graphviz/2.42.2/include/" \
+        --install-option="--library-path=/usr/local/Cellar/graphviz/2.42.2/lib/" pygraphviz; \
+    fi
 codecov: true
 jobs:
   allow_failures:
