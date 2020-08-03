@@ -4,13 +4,19 @@ os:
   - osx
 julia:
   - 1.0
-  - 1.4
+  - 1.5
   - nightly
 addons:
   apt:
     packages:
-    - python3-pygraphviz
-    - ghostscript
+      - python3-pygraphviz
+      - ghostscript
+  homebrew:
+    packages:
+      - graphviz
+      - ghostscript
+before_install:
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; pip install pygraphviz; fi
 codecov: true
 jobs:
   allow_failures:
