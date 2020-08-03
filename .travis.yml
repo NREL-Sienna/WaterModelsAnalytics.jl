@@ -16,8 +16,8 @@ addons:
       - graphviz
       - ghostscript
     update: true
-before_script:
-  - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then pip install pygraphviz; fi
+script:
+  - julia -e 'using Conda; Conda.add("pygraphviz")'
 codecov: true
 jobs:
   allow_failures:
