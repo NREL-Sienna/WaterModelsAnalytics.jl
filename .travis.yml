@@ -16,7 +16,7 @@ addons:
       - graphviz
       - ghostscript
 before_install:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; pip install pygraphviz; fi
+  - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then pip install pygraphviz; fi
 codecov: true
 jobs:
   allow_failures:
