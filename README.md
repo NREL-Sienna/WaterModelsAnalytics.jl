@@ -8,7 +8,7 @@ Currently requires Python's `pygraphviz` and the graphviz `dot` command.
 
 Basic working example:
 
-```
+```julia
 import InfrastructureModels
 const IM = InfrastructureModels
 import WaterModels
