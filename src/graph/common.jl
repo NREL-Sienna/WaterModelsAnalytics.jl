@@ -1,11 +1,6 @@
 # TODO:
 # - parse for discrete valves and add labels for those links (valves as part of pipes are
-#   done)
-# x parse for demand at nodes and add demand labels
-# x add fill color for each node that scales with elevation
-# x add colorbar for elevation colors (how to do it?)
-# x add an indication of edge length
-# x add coordinates for the nodes
+#   done, but that formulation will change at some point anyway!)
 # - allow user to choose an output style that uses coordinates
 
 
@@ -21,19 +16,19 @@ function build_graph(data::Dict{String,Any})
     G = pgv.AGraph(strict=false, directed=true)
 
     add_nodes!(G, data["node"])
-    demand!(G, data["junction"])
+    node_labels!(G, data["junction"])
+    node_labels!(G, data["reservoir"])
+    node_labels!(G, data["tank"])
     
     add_links!(G, data["pipe"])
     add_links!(G, data["pump"])
-    add_links!(G, data["valve"])
+    #add_links!(G, data["valve"]) # doesn't exist now, may become several valve types?
     
     return G
 end # funtion build_graph
 
 
 function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
-    # This needs to be redone. Nodes are now disctinct from junctions, tanks, and reservoirs. JJS 7/22/20
-
     # determine max and min elevations and coordinates
     elmin = 1e16 
     elmax = 1e-16
@@ -65,14 +60,8 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
 
     # create and populate networkx nodes
     for (key,node) in nodes
-        node_type = node["source_id"][1]
-        if node_type == "reservoir"
-            name = "Rsvr\n"*node["name"]
-        elseif node_type == "tank"
-            name = "Tank\n"*node["name"]
-        else
-            name = node["name"]
-        end
+        name = node["name"] # names will be rewritten for junctions (with demand), tanks,
+                            # and reservoirs
         
         # color by elevation
         elev = node["elevation"]
@@ -103,22 +92,22 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
 end
 
 
-""" Add demand label for junctions."""
-function demand!(G::PyCall.PyObject, junctions::Dict{String,Any})
-    for (key,junction) in junctions
-        #### are the keys in data["node"] alwyas equal to string(index) ??? will
-        #### presume so for now, JJS 7/7/20
-        ## I don't think this bit is needed with pygraphviz, JJS 7/17/20
-        # if typeof(key) == String
-        #     index = parse(Int, key)
-        # else
-        #     index = key
-        # end
+""" Add labels for junctions, tanks, and reservoirs."""
+function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
+    for (key,node) in nodes
+        nodeidx = node["node"]
+        nodeobj = @pycall G."get_node"(nodeidx)::PyObject
+        name = node["name"]
 
-        nodeobj = @pycall G."get_node"(key)::PyObject
-        name = get(nodeobj.attr, "label")
-        dem = @sprintf("%2.2g", junction["demand"])
-        PyCall.set!(nodeobj.attr, "label", name*"\nd = "*dem)
+        node_type = node["source_id"][1]
+        if node_type == "reservoir"
+            PyCall.set!(nodeobj.attr, "label", "Rsvr\n"*name)
+        elseif node_type == "tank"
+            PyCall.set!(nodeobj.attr, "label", "Tank\n"*name)
+        else
+            dem = @sprintf("%2.2g", node["demand"])
+            PyCall.set!(nodeobj.attr, "label", name*"\nd = "*dem)
+        end
     end
 end
 
@@ -129,16 +118,19 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
         if link_type == "pump"
             G.add_edge(link["node_fr"], link["node_to"], link["index"],
                        label="P "*link["name"], color="red", style="bold")
-        elseif link_type == "valve"
-            println("valves not yet implemented")
+#  dinstinct valves TBD
+#        elseif link_type == "valve" 
+#            println("valves not yet implemented")
         else # it is a pipe
             length = @sprintf("%2.2g", link["length"])
-            type = link["status"]
-            if type != "Open"
-                G.add_edge(link["node_fr"], link["node_to"], link["index"],
-                           label=type*"\n"*length)
+            if link["has_shutoff_valve"]
+                G.add_edge(link["node_fr"], link["node_to"], key,
+                           label="SV\n"*length)
+            elseif link["has_check_valve"]
+                G.add_edge(link["node_fr"], link["node_to"], key,
+                           label="CV\n"*length)
             else
-                G.add_edge(link["node_fr"], link["node_to"], link["index"], label=length)
+                G.add_edge(link["node_fr"], link["node_to"], key, label=length)
             end
         end
     end
