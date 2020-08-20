@@ -60,8 +60,12 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
 
     # create and populate networkx nodes
     for (key,node) in nodes
-        name = node["name"] # names will be rewritten for junctions (with demand), tanks,
-                            # and reservoirs
+        # note that names will be rewritten for junctions, tanks, and reservoirs
+        if haskey(node, "source_id")
+            name = node["source_id"][2]
+        else
+            name = node["name"] 
+        end
         
         # color by elevation
         elev = node["elevation"]
@@ -95,8 +99,8 @@ end
 """ Add labels for junctions, tanks, and reservoirs."""
 function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
     for (key,node) in nodes
-        nodeidx = node["node"]
-        nodeobj = @pycall G."get_node"(nodeidx)::PyObject
+        nodekey = node["node"]
+        nodeobj = @pycall G."get_node"(nodekey)::PyObject
         name = node["name"]
 
         node_type = node["source_id"][1]
@@ -105,8 +109,13 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         elseif node_type == "tank"
             PyCall.set!(nodeobj.attr, "label", "Tank\n"*name)
         else
-            dem = @sprintf("%2.2g", node["demand"])
-            PyCall.set!(nodeobj.attr, "label", name*"\nd = "*dem)
+            dem = node["demand"]
+            if dem==0
+                PyCall.set!(nodeobj.attr, "label", name)
+            else
+                dem = @sprintf("%2.2g", dem)
+                PyCall.set!(nodeobj.attr, "label", name*"\nd = "*dem)
+            end
         end
     end
 end
