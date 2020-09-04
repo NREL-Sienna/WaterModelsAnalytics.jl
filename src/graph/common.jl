@@ -1,7 +1,7 @@
 # TODO:
+# - add capability to show node and link results
 # - parse for discrete valves and add labels for those links (valves as part of pipes are
 #   done, but that formulation will change at some point anyway!)
-# - allow user to choose an output style that uses coordinates
 
 
 """
@@ -150,11 +150,12 @@ end
 """ 
 Write out to a file a visualization for a WaterModels network dictionary parsed from an
 EPANET file. `basefilename` should not include an extension and will be appended with
-`_w_cb.pdf` in the final output file, which is a multi-page PDF. Use `del_files=false` to
-keep the intermediate files.
+`_w_cb.pdf` in the final output file, which is a multi-page PDF. The `layout` option equates
+to the layout functions of graphviz (dot, neato, etc.). Use `del_files=false` to keep the
+intermediate files.
 """
 function write_visualization(data::Dict{String,Any}, basefilename::String;
-                             del_files::Bool=true)
+                             layout::String="dot", del_files::Bool=true)
     # TODO:
     # - pass through arguments to `write_graph`
 
@@ -164,7 +165,7 @@ function write_visualization(data::Dict{String,Any}, basefilename::String;
     outfile = basefilename*"_w_cb.pdf"
     
     G = build_graph(data)
-    write_graph(G, pdffile)
+    write_graph(G, pdffile, layout)
     colorbar(G, cbfile)
 
     # add option -dAutoRotatePages=/None ?
@@ -176,14 +177,19 @@ function write_visualization(data::Dict{String,Any}, basefilename::String;
 end
 
 
+""" 
+Use graphviz (via pygraphviz) to output a visualization to a file for a graph. The
+`layout` option equates to the layout functions of graphviz (dot, neato, etc.).
 """
-Use graphviz (via pygraphviz) to output a visualization to a file for a graph
-"""
-function write_graph(G::PyCall.PyObject, filename::String)
+function write_graph(G::PyCall.PyObject, filename::String, layout::String="dot")
     # TODO:
-    # - allow different graphviz programs to be used, e.g., neato
     # - allow other arguments to be passed through to graphviz
-    G.draw(filename, prog="dot")
+    try
+        G.draw(filename, prog=layout)
+    catch
+        @warn "$layout is not a supported layout; dot used instead"
+        G.draw(filename, prog="dot")
+    end
 end
 
 
