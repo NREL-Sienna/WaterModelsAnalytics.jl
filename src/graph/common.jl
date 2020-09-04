@@ -127,19 +127,20 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
         if link_type == "pump"
             G.add_edge(link["node_fr"], link["node_to"], link["index"],
                        label="P "*link["name"], color="red", style="bold")
-#  dinstinct valves TBD
+#  distinct valves TBD
 #        elseif link_type == "valve" 
 #            println("valves not yet implemented")
         else # it is a pipe
-            length = @sprintf("%2.2g", link["length"])
+            length = @sprintf("%2.2g m", link["length"])
             if link["has_shutoff_valve"]
                 G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="SV\n"*length)
+                           label="SV "*link["name"]*"\n"*length)
             elseif link["has_check_valve"]
                 G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="CV\n"*length)
+                           label="CV "*link["name"]*"\n"*length)
             else
-                G.add_edge(link["node_fr"], link["node_to"], key, label=length)
+                G.add_edge(link["node_fr"], link["node_to"], key,
+                           label=link["name"]*"\n"*length)
             end
         end
     end
