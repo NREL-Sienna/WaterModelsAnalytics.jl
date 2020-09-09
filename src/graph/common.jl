@@ -1,5 +1,6 @@
 # TODO:
 # - add capability to show node and link results
+# - add keyword argument to choose whether to enable/disable showing indices 
 # - parse for discrete valves and add labels for those links (valves as part of pipes are
 #   done, but that formulation will change at some point anyway!)
 
@@ -66,6 +67,13 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
         else
             name = node["name"] 
         end
+
+        # add node index to the label if different from the name
+        if name==key
+            label=name
+        else
+            label=name*"\n("*key*")"
+        end
         
         # color by elevation
         elev = node["elevation"]
@@ -86,7 +94,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
             yval = scale*(coord[2] - ymin)/yspan
             posstr = string(xval)*","*string(yval)*"!" # exclamation point forces exact
                                                      # positioning when using Neato
-            G.add_node(node["index"], label=name, elevation=elev, pos=posstr,
+            G.add_node(node["index"], label=label, elevation=elev, pos=posstr,
                        style="filled", fillcolor=clrstr, fontcolor=fntclr)
         else
             G.add_node(node["index"], label=name, elevation=elev, style="filled",
@@ -103,18 +111,25 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         nodeobj = @pycall G."get_node"(nodekey)::PyObject
         name = node["name"]
 
+        # add node index to the label if different from the name
+        if name==nodekey
+            label = name
+        else
+            label = name*"\n("*string(nodekey)*")"
+        end
+        
         node_type = node["source_id"][1]
         if node_type == "reservoir"
-            PyCall.set!(nodeobj.attr, "label", "Rsvr\n"*name)
+            PyCall.set!(nodeobj.attr, "label", "Rsvr\n"*label)
         elseif node_type == "tank"
-            PyCall.set!(nodeobj.attr, "label", "Tank\n"*name)
+            PyCall.set!(nodeobj.attr, "label", "Tank\n"*label)
         else
             dem = node["demand"]
             if dem==0
-                PyCall.set!(nodeobj.attr, "label", name)
+                PyCall.set!(nodeobj.attr, "label", label)
             else
                 dem = @sprintf("%2.2g", dem)
-                PyCall.set!(nodeobj.attr, "label", name*"\nd = "*dem)
+                PyCall.set!(nodeobj.attr, "label", label*"\nd = "*dem)
             end
         end
     end
@@ -124,9 +139,17 @@ end
 function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
     for (key,link) in links
         link_type = link["source_id"][1]
+        name = link["name"]
+        # add link index to the label if different from the name
+        if name==key
+            label = name
+        else
+            label = name*"\n("*key*")"
+        end
+        
         if link_type == "pump"
             G.add_edge(link["node_fr"], link["node_to"], link["index"],
-                       label="P "*link["name"], color="red", style="bold")
+                       label="P "*label, color="red", style="bold")
 #  distinct valves TBD
 #        elseif link_type == "valve" 
 #            println("valves not yet implemented")
@@ -134,13 +157,13 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
             length = @sprintf("%2.2g m", link["length"])
             if link["has_shutoff_valve"]
                 G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="SV "*link["name"]*"\n"*length)
+                           label="SV "*label*"\n"*length)
             elseif link["has_check_valve"]
                 G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="CV "*link["name"]*"\n"*length)
+                           label="CV "*label*"\n"*length)
             else
                 G.add_edge(link["node_fr"], link["node_to"], key,
-                           label=link["name"]*"\n"*length)
+                           label=label*"\n"*length)
             end
         end
     end
