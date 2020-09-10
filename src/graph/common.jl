@@ -1,6 +1,5 @@
 # TODO:
-# - add capability to show node and link results
-# - add keyword argument to choose whether to enable/disable showing indices 
+# - add keyword argument to choose whether to enable/disable showing indices?
 # - parse for discrete valves and add labels for those links (valves as part of pipes are
 #   done, but that formulation will change at some point anyway!)
 
@@ -8,7 +7,8 @@
 """
 Build networkx graph object from a WaterModels network dictionary parsed from an EPANET file.
 """
-function build_graph(data::Dict{String,Any})
+function build_graph(data::Dict{String,Any},
+                     solution::Union{Nothing, Dict{String,Any}}=nothing)
     # presumes input is data dict from WaterModels.parse_file()
 
     # TODO:
@@ -24,11 +24,19 @@ function build_graph(data::Dict{String,Any})
     add_links!(G, data["pipe"])
     add_links!(G, data["pump"])
     #add_links!(G, data["valve"]) # doesn't exist now, may become several valve types?
+
+    # if solution dict provided
+    if !isnothing(solution)
+        add_solution!(G, data, solution)
+    end
     
     return G
 end # funtion build_graph
 
-
+"""
+Add nodes to the pygraphviz graph object, including node attributes for name label,
+elevation, and coordinates
+"""
 function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
     # determine max and min elevations and coordinates
     elmin = 1e16 
@@ -129,13 +137,15 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
                 PyCall.set!(nodeobj.attr, "label", label)
             else
                 dem = @sprintf("%2.2g", dem)
-                PyCall.set!(nodeobj.attr, "label", label*"\nd = "*dem)
+                PyCall.set!(nodeobj.attr, "label", label*"\nd: "*dem)
             end
         end
     end
 end
 
-
+"""
+Add links to the graph with a label denoting type, name, and length
+"""
 function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
     for (key,link) in links
         link_type = link["source_id"][1]
@@ -170,6 +180,41 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
 end
 
 
+"""
+add solution values to the node and link labels
+"""
+function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
+                       solution::Dict{String,Any})
+    # add head to the node labels (could alternatively show pressure)
+    for (key,node) in solution["node"]
+        head = @sprintf("%2.2g", node["h"])
+        nodeobj = @pycall G."get_node"(key)::PyObject
+        label = get(nodeobj.attr, "label")
+        PyCall.set!(nodeobj.attr, "label", label*"\nh: "*head)
+    end
+    # add flow to the labels for pipes and check- and shutoff-valves
+    pipesplus = merge(solution["pipe"], solution["check_valve"], solution["shutoff_valve"])
+    for (key,pipesol) in pipesplus
+        flow = @sprintf("%2.2g", pipesol["q"])
+        pipe = data["pipe"][key]
+        # may also need to use `key` if multiple pipes between nodes 
+        edgeobj = @pycall G."get_edge"(pipe["node_fr"], pipe["node_to"])::PyObject 
+        label = get(edgeobj.attr, "label")
+        PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow)
+    end
+    # add flow and gain to the pump labels 
+    for (key,pumpsol) in solution["pump"]
+        flow = @sprintf("%2.2g", pumpsol["q"])
+        gain = @sprintf("%2.2g", pumpsol["g"])
+        pump = data["pump"][key]
+        # may also need to use `key` if multiple pumps between nodes 
+        edgeobj = @pycall G."get_edge"(pump["node_fr"], pump["node_to"])::PyObject 
+        label = get(edgeobj.attr, "label")
+        PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow*"\ng: "*gain)
+    end
+end
+
+
 """ 
 Write out to a file a visualization for a WaterModels network dictionary parsed from an
 EPANET file. `basefilename` should not include an extension and will be appended with
@@ -177,7 +222,8 @@ EPANET file. `basefilename` should not include an extension and will be appended
 to the layout functions of graphviz (dot, neato, etc.). Use `del_files=false` to keep the
 intermediate files.
 """
-function write_visualization(data::Dict{String,Any}, basefilename::String;
+function write_visualization(data::Dict{String,Any}, basefilename::String,
+                             solution::Union{Nothing, Dict{String,Any}}=nothing;
                              layout::String="dot", del_files::Bool=true)
     # TODO:
     # - pass through arguments to `write_graph`
@@ -187,7 +233,7 @@ function write_visualization(data::Dict{String,Any}, basefilename::String;
     cbfile = basefilename*"_cbar.pdf"
     outfile = basefilename*"_w_cb.pdf"
     
-    G = build_graph(data)
+    G = build_graph(data, solution)
     write_graph(G, pdffile, layout)
     colorbar(G, cbfile)
 
