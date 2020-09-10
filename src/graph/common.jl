@@ -115,7 +115,7 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         if name==nodekey
             label = name
         else
-            label = name*"\n("*string(nodekey)*")"
+            label = name*" ("*string(nodekey)*")"
         end
         
         node_type = node["source_id"][1]
@@ -144,12 +144,12 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
         if name==key
             label = name
         else
-            label = name*"\n("*key*")"
+            label = name*" ("*key*")"
         end
         
         if link_type == "pump"
             G.add_edge(link["node_fr"], link["node_to"], link["index"],
-                       label="P "*label, color="red", style="bold")
+                       label="Pmp\n"*label, color="red", style="bold")
 #  distinct valves TBD
 #        elseif link_type == "valve" 
 #            println("valves not yet implemented")
@@ -157,10 +157,10 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
             length = @sprintf("%2.2g m", link["length"])
             if link["has_shutoff_valve"]
                 G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="SV "*label*"\n"*length)
+                           label="SV\n"*label*"\n"*length)
             elseif link["has_check_valve"]
                 G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="CV "*label*"\n"*length)
+                           label="CV\n"*label*"\n"*length)
             else
                 G.add_edge(link["node_fr"], link["node_to"], key,
                            label=label*"\n"*length)
