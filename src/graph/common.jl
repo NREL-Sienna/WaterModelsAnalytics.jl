@@ -80,7 +80,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
         if name==key
             label=name
         else
-            label=name*"\n("*key*")"
+            label=name*" ("*key*")"
         end
         
         # color by elevation
@@ -105,7 +105,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
             G.add_node(node["index"], label=label, elevation=elev, pos=posstr,
                        style="filled", fillcolor=clrstr, fontcolor=fntclr)
         else
-            G.add_node(node["index"], label=name, elevation=elev, style="filled",
+            G.add_node(node["index"], label=label, elevation=elev, style="filled",
                        fillcolor=clrstr, fontcolor=fntclr)
         end
     end
@@ -193,14 +193,16 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
         PyCall.set!(nodeobj.attr, "label", label*"\nh: "*head)
     end
     # add flow to the labels for pipes and check- and shutoff-valves
-    pipesplus = merge(solution["pipe"], solution["check_valve"], solution["shutoff_valve"])
-    for (key,pipesol) in pipesplus
-        flow = @sprintf("%2.2g", pipesol["q"])
-        pipe = data["pipe"][key]
-        # may also need to use `key` if multiple pipes between nodes 
-        edgeobj = @pycall G."get_edge"(pipe["node_fr"], pipe["node_to"])::PyObject 
-        label = get(edgeobj.attr, "label")
-        PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow)
+    pipesplus = [solution["pipe"], solution["check_valve"], solution["shutoff_valve"]]
+    for dict in pipesplus
+        for (key,pipesol) in dict
+            flow = @sprintf("%2.2g", pipesol["q"])
+            pipe = data["pipe"][key]
+            # may also need to use `key` if multiple pipes between nodes 
+            edgeobj = @pycall G."get_edge"(pipe["node_fr"], pipe["node_to"])::PyObject 
+            label = get(edgeobj.attr, "label")
+            PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow)
+        end
     end
     # add flow and gain to the pump labels 
     for (key,pumpsol) in solution["pump"]
