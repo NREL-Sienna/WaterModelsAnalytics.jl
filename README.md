@@ -4,7 +4,7 @@ WaterModelsAnalytics.jl is a Julia package to to support WaterModels.jl (and
 possibly WaterSystems.jl) with network graph visualizations (and possibly other
 graphics at a later version).
 
-Currently requires Python's `pygraphviz` and the graphviz `dot` command.
+Currently requires Python's `pygraphviz` (version >=1.5) and the graphviz `dot` command.
 
 Basic working example:
 

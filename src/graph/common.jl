@@ -258,8 +258,10 @@ function write_graph(G::PyCall.PyObject, filename::String, layout::String="dot")
     try
         G.draw(filename, prog=layout)
     catch
-        @warn "$layout is not a supported layout; dot used instead"
         G.draw(filename, prog="dot")
+        # by putting this warning after, it should display only if `G.draw()` was actually
+        # successful using "dot"; if it fails for another reason, that error should be shown
+        @warn "$layout is not a supported layout; dot was used instead"
     end
 end
 
