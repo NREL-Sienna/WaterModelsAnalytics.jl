@@ -23,6 +23,7 @@ module WaterModelsAnalytics
     const pgv = PyCall.PyNULL()
     const wntr = PyCall.PyNULL()
     const wntrctrls = PyCall.PyNULL()
+
     # Create our module-level logger (this will get precompiled).
     const _LOGGER = Memento.getlogger(@__MODULE__)
 
@@ -30,6 +31,7 @@ module WaterModelsAnalytics
         copy!(pgv, PyCall.pyimport("pygraphviz"))
         copy!(wntr, PyCall.pyimport("wntr"))
         copy!(wntrctrls, PyCall.pyimport("wntr.network.controls"))
+
 
         # Register the module-level logger at runtime so users can access the logger via
         # `getlogger(WaterModelsAnalytics)` NOTE: If this line is not included, then the
@@ -54,10 +56,12 @@ module WaterModelsAnalytics
 
     include("graph/common.jl")
     include("analysis/epanet.jl")
+    include("analysis/tank.jl")
 
     export build_graph
     export write_graph
     export colorbar
     export write_visualization
     export epanet_diff
+    export plot_tank_diff
 end
