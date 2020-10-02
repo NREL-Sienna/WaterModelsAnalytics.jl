@@ -1,7 +1,11 @@
 # TODO:
 # - add keyword argument to choose whether to enable/disable showing indices?
-# - parse for discrete valves and add labels for those links (valves as part of pipes are
-#   done, but that formulation will change at some point anyway!)
+# * parse for discrete valves and add labels for those links (valves as part of pipes are
+#   done, but that formulation will change at some point anyway!) -- in progress! JJS 10/2/20
+# - redo adding solution information to the network
+# - parse regulators, throttle control valves, others???
+# * need to check whether epanet-data object can still be processed for visualization
+
 
 
 """
@@ -17,13 +21,15 @@ function build_graph(data::Dict{String,Any},
     G = pgv.AGraph(strict=false, directed=true)
 
     add_nodes!(G, data["node"])
-    node_labels!(G, data["junction"])
+    #node_labels!(G, data["junction"])
+    node_labels!(G, data["demand"]) # junction renamed demand? 
     node_labels!(G, data["reservoir"])
     node_labels!(G, data["tank"])
     
     add_links!(G, data["pipe"])
+    add_links!(G, data["short_pipe"]) # not implemented yet? JJS 10/2/20
     add_links!(G, data["pump"])
-    #add_links!(G, data["valve"]) # doesn't exist now, may become several valve types?
+    add_links!(G, data["valve"]) 
 
     # if solution dict provided
     if !isnothing(solution)
@@ -132,7 +138,8 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         elseif node_type == "tank"
             PyCall.set!(nodeobj.attr, "label", "Tank\n"*label)
         else
-            dem = node["demand"]
+            #dem = node["demand"]
+            dem = node["flow_rate"] # renamed flow_rate?
             if dem==0
                 PyCall.set!(nodeobj.attr, "label", label)
             else
@@ -160,21 +167,17 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
         if link_type == "pump"
             G.add_edge(link["node_fr"], link["node_to"], link["index"],
                        label="Pmp\n"*label, color="red", style="bold")
-#  distinct valves TBD
-#        elseif link_type == "valve" 
-#            println("valves not yet implemented")
-        else # it is a pipe
-            length = @sprintf("%2.2g m", link["length"])
-            if link["has_shutoff_valve"]
-                G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="SV\n"*label*"\n"*length)
-            elseif link["has_check_valve"]
-                G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="CV\n"*label*"\n"*length)
+        elseif link_type == "valve"
+            ## TODO: differentiate between check and shutoff valves!
+            G.add_edge(link["node_fr"], link["node_to"], key, label="V\n"*label)
+        else # it is a pipe -- what about short pipes???
+            if haskey(link, "length")
+                # temporary until get all the types sorted out, JJS 10/2/20
+                length = @sprintf("%2.2g m", link["length"])
             else
-                G.add_edge(link["node_fr"], link["node_to"], key,
-                           label=label*"\n"*length)
+                length = "0"
             end
+            G.add_edge(link["node_fr"], link["node_to"], key, label=label*"\n"*length)
         end
     end
 end
