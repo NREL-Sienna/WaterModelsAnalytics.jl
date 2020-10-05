@@ -175,7 +175,7 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
                 # temporary until get all the types sorted out, JJS 10/2/20
                 length = @sprintf("%2.2g m", link["length"])
             else
-                length = "0"
+                length = "0 m"
             end
             G.add_edge(link["node_fr"], link["node_to"], key, label=label*"\n"*length)
         end
