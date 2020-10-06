@@ -2,6 +2,9 @@ language: julia
 os:
   - linux
   - osx
+env:
+  global:
+    - PYTHON="python3"
 julia:
   - 1.0
   - 1.5
@@ -9,8 +12,16 @@ julia:
 addons:
   apt:
     packages:
-    - python3-pygraphviz
-    - ghostscript
+      - python3-pygraphviz
+      - ghostscript
+  homebrew:
+    packages:
+      - python
+      - graphviz
+      - ghostscript
+    update: true
+before_script:
+  - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then python3 -m pip install pygraphviz; fi
 codecov: true
 jobs:
   allow_failures:
