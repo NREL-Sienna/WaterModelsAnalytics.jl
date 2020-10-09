@@ -120,7 +120,7 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         name = node["name"]
 
         # add node index to the label if different from the name
-        if name==nodekey
+        if name==string(nodekey)
             label = name
         else
             label = name*" ("*string(nodekey)*")"
