@@ -2,7 +2,7 @@ name = "WaterModelsAnalytics"
 uuid = "c8dd6cb9-700f-49b6-9aea-b063ad5cac2e"
 authors = ["Jonathan Stickel <jonathan.stickel@nrel.gov>"]
 repo = "https://github.com/NREL-SIIP/WaterModelsAnalytics.jl"
-version = "0.4.0"
+version = "0.3.0"
 
 [deps]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
