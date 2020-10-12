@@ -1,7 +1,9 @@
 # TODO:
 # - add keyword argument to choose whether to enable/disable showing indices?
-# - parse for discrete valves and add labels for those links (valves as part of pipes are
-#   done, but that formulation will change at some point anyway!)
+# * redo adding solution information to the network with valve refactor
+# - parse regulators, throttle control valves, others???
+# * need to check whether epanet-data object can still be processed for visualization
+
 
 
 """
@@ -17,13 +19,15 @@ function build_graph(data::Dict{String,Any},
     G = pgv.AGraph(strict=false, directed=true)
 
     add_nodes!(G, data["node"])
-    node_labels!(G, data["junction"])
+    #node_labels!(G, data["junction"])
+    node_labels!(G, data["demand"]) # junction renamed demand? 
     node_labels!(G, data["reservoir"])
     node_labels!(G, data["tank"])
     
-    add_links!(G, data["pipe"])
-    add_links!(G, data["pump"])
-    #add_links!(G, data["valve"]) # doesn't exist now, may become several valve types?
+    add_links!(G, data["pipe"], "pipe")
+    add_links!(G, data["short_pipe"], "short") # not implemented yet? JJS 10/2/20
+    add_links!(G, data["pump"], "pump")
+    add_links!(G, data["valve"], "valve") 
 
     # if solution dict provided
     if !isnothing(solution)
@@ -125,14 +129,17 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         else
             label = name*" ("*string(nodekey)*")"
         end
-        
+
+        # will the node type ever change from the original source_id description? some link
+        # types do (pipes -> valves)
         node_type = node["source_id"][1]
         if node_type == "reservoir"
             PyCall.set!(nodeobj.attr, "label", "Rsvr\n"*label)
         elseif node_type == "tank"
             PyCall.set!(nodeobj.attr, "label", "Tank\n"*label)
         else
-            dem = node["demand"]
+            #dem = node["demand"]
+            dem = node["flow_rate"] # renamed flow_rate?
             if dem==0
                 PyCall.set!(nodeobj.attr, "label", label)
             else
@@ -146,9 +153,8 @@ end
 """
 Add links to the graph with a label denoting type, name, and length
 """
-function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
+function add_links!(G::PyCall.PyObject, links::Dict{String,Any}, link_type::String)
     for (key,link) in links
-        link_type = link["source_id"][1]
         name = link["name"]
         # add link index to the label if different from the name
         if name==key
@@ -160,21 +166,20 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any})
         if link_type == "pump"
             G.add_edge(link["node_fr"], link["node_to"], link["index"],
                        label="Pmp\n"*label, color="red", style="bold")
-#  distinct valves TBD
-#        elseif link_type == "valve" 
-#            println("valves not yet implemented")
-        else # it is a pipe
-            length = @sprintf("%2.2g m", link["length"])
-            if link["has_shutoff_valve"]
-                G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="SV\n"*label*"\n"*length)
-            elseif link["has_check_valve"]
-                G.add_edge(link["node_fr"], link["node_to"], key,
-                           label="CV\n"*label*"\n"*length)
-            else
-                G.add_edge(link["node_fr"], link["node_to"], key,
-                           label=label*"\n"*length)
+        elseif link_type == "valve"
+            if link["flow_direction"] == _WM.UNKNOWN
+                G.add_edge(link["node_fr"], link["node_to"], key, label="SV\n"*label)
+            else # presume if set positive or negative flow, then it is a check valve
+                G.add_edge(link["node_fr"], link["node_to"], key, label="CV\n"*label)
             end
+        else # it is a pipe -- what about short pipes???
+            if haskey(link, "length")
+                # temporary until get all the types sorted out, JJS 10/2/20
+                length = @sprintf("%2.2g m", link["length"])
+            else
+                length = "0 m"
+            end
+            G.add_edge(link["node_fr"], link["node_to"], key, label=label*"\n"*length)
         end
     end
 end
