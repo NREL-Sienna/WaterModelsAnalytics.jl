@@ -61,6 +61,7 @@ module WaterModelsAnalytics
     include("graph/common.jl")
 
     include("analysis/simulation.jl")
+
     include("analysis/validation.jl")
     include("analysis/visualization.jl")
 

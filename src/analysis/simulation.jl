@@ -18,9 +18,11 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
 
     # store tank names in a set
     tank_set = Set()
+    tank_index_dict = Dict{String,String}()
     for (key,tank) in solution["1"]["tank"]
         tank_name = data["tank"][key]["name"] # epanet name
         push!(tank_set, tank_name)
+        tank_index_dict[tank_name] = key
     end
 
     # store artificial links and nodes connected to tanks in a Dict
@@ -75,10 +77,13 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
         end
     end
 
-
     ## add artificial nodes and links to tanks in wn 
     for tank_name in tank_set
         tank_elevation = wn.nodes._data[tank_name].elevation
+        diameter = wn.nodes._data[tank_name].diameter
+
+        # enforce the initial levels of tanks 
+        wn.nodes._data[tank_name].init_level = solution["1"]["tank"][tank_index_dict[tank_name]]["V"]/(1/4*pi*diameter^2)
 
         # add artificial node and link
         wn.add_junction(arti_node_dict[tank_name],base_demand=0,elevation=tank_elevation)
@@ -104,6 +109,8 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
             cv = wn.links._data[link_name].cv 
             # remove link
             wn.remove_link(link_name,with_control=true,force=true)
+
+
             # add the link back and connect to the artificial node
             if start_node_name == tank_name
                 wn.add_pipe(link_name,start_node_name=arti_node_dict[tank_name],end_node_name=end_node_name,
