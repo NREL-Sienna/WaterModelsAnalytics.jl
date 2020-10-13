@@ -15,8 +15,14 @@ module WaterModelsAnalytics
     import Statistics.mean
     using Printf
 
+    import Interpolations
+    const _ITP = Interpolations
+
     import Plots
     import DataFrames
+    using LaTeXStrings
+
+    # using PyPlot
 
     # Python imports.
     import PyCall
@@ -60,8 +66,7 @@ module WaterModelsAnalytics
     include("analysis/simulation.jl")
     include("analysis/validation.jl")
     include("analysis/visualization.jl")
-
-
+    include("plots/pumps.jl")
 
     export build_graph
     export write_graph
@@ -79,5 +84,7 @@ module WaterModelsAnalytics
 
     # export compare_tank_head
     export compare_tank_level
+
+    export plot_pumps
 
 end
