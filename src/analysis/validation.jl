@@ -40,7 +40,7 @@ function validate(data::Dict{String,Any}, solution::Dict{String,Any},
     # ------------------------------------------#
     #                   link                    #
     # ------------------------------------------#
-    link_types = ["pipe", "check_valve", "shutoff_valve", "pump"]
+    link_types = ["pipe", "valve", "pump"]
     
     wntr_flow = wslinks["flowrate"]
     wntr_dh = wslinks["headloss"]
@@ -53,11 +53,16 @@ function validate(data::Dict{String,Any}, solution::Dict{String,Any},
 
     for ltype in link_types
         for (key, link) in solution[string("1")][ltype]
-            if ltype in ["check_valve", "shutoff_valve"]
-                link_name = data["pipe"][key]["name"]
-            else
-                link_name = data[ltype][key]["name"]
-            end
+
+            # if ltype in ["check_valve", "shutoff_valve"]
+            #     link_name = data["pipe"][key]["name"]
+            # else
+            #     link_name = data[ltype][key]["name"]
+            # end
+
+            link_name = data[ltype][key]["name"]
+
+
             link_flow_wntr[link_name] = Array{Float64,1}(undef,length(solution))
             link_flow_wm[link_name] = Array{Float64,1}(undef,length(solution))
 
@@ -70,11 +75,16 @@ function validate(data::Dict{String,Any}, solution::Dict{String,Any},
     for tx in 1:length(keys(solution))
         for ltype in link_types
             for (key, link) in solution[string(tx)][ltype]
-                if ltype in ["check_valve", "shutoff_valve"]
-                    link_name = data["pipe"][key]["name"]
-                else
-                    link_name = data[ltype][key]["name"]
-                end
+
+
+                # if ltype in ["check_valve", "shutoff_valve"]
+                #     link_name = data["pipe"][key]["name"]
+                # else
+                #     link_name = data[ltype][key]["name"]
+                # end
+                link_name = data[ltype][key]["name"]
+
+
                 if haskey(wntr_flow, link_name)
                     link_flow_wntr[link_name][tx] = wntr_flow[link_name].values[tx]
                     link_flow_wm[link_name][tx] = link["q"]

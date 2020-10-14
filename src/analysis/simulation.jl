@@ -16,6 +16,15 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
         push!(pump_set, pump_name)
     end
 
+    # store shutoff valve names in a set
+    shutoff_valve_set = Set()
+    for (key,shutoff_valve) in solution["1"]["valve"]
+        valve_name = data["valve"][key]["name"]
+        if string(data["valve"][key]["flow_direction"]) == "UNKNOWN"
+            push!(shutoff_valve_set,valve_name)
+        end
+    end
+
     # store tank names in a set
     tank_set = Set()
     tank_index_dict = Dict{String,String}()
@@ -35,35 +44,38 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
     end
 
     # retrieve added artificial nodes and links for tanks
-    for (key,pipe) in data["pipe"]
-        artificial_link = data["pipe"][key]["name"] # not necessarily an artifical pipe
-        node_to_index = string(data["pipe"][key]["node_to"])
-        node_fr_index = string(data["pipe"][key]["node_fr"])
+    for (key,valve) in data["valve"]
+        artificial_link = data["valve"][key]["name"] # not necessarily an artifical link
+        node_to_index = string(data["valve"][key]["node_to"])
+        node_fr_index = string(data["valve"][key]["node_fr"])
+
         if data["node"][node_to_index]["source_id"][2] in tank_set
             tank_name = data["node"][node_to_index]["source_id"][2]
             arti_link_dict[tank_name] = artificial_link
-            artificial_node = data["node"][node_fr_index]["source_id"][2]
+            if data["node"][node_to_index] == tank_index_dict[tank_name]
+                artificial_node = data["node"][node_fr_index]["name"]
+            else
+                artificial_node = data["node"][node_to_index]["name"]
+            end
             arti_node_dict[tank_name] = artificial_node
         elseif data["node"][node_fr_index]["source_id"][2] in tank_set
             tank_name = data["node"][node_fr_index]["source_id"][2]
             arti_link_dict[tank_name] = artificial_link
-            artificial_node = data["node"][node_to_index]["source_id"][2]
+            if data["node"][node_fr_index] == tank_index_dict[tank_name]
+                artificial_node = data["node"][node_to_index]["name"]
+            else
+                artificial_node = data["node"][node_fr_index]["name"]
+            end
             arti_node_dict[tank_name] = artificial_node
         end
     end
 
-    link_types = ["pipe", "check_valve", "shutoff_valve", "pump"]
+    link_types = ["pipe", "valve", "pump"]
     for ltype in link_types
         for (key, link) in solution["1"][ltype]
-            if ltype in ["check_valve", "shutoff_valve"]
-                link_name = data["pipe"][key]["name"]
-                node_to_index = string(data["pipe"][key]["node_to"])
-                node_fr_index = string(data["pipe"][key]["node_fr"])
-            else
-                link_name = data[ltype][key]["name"]
-                node_to_index = string(data[ltype][key]["node_to"])
-                node_fr_index = string(data[ltype][key]["node_fr"])
-            end
+            link_name = data[ltype][key]["name"]
+            node_to_index = string(data[ltype][key]["node_to"])
+            node_fr_index = string(data[ltype][key]["node_fr"])
             node_to_name = data["node"][node_to_index]["source_id"][2]
             node_fr_name = data["node"][node_fr_index]["source_id"][2]
             for tank_name in tank_set
@@ -123,7 +135,7 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
     end
 
  
-    # remove old controlsß
+    # remove old controls
     old_controls = wn.control_name_list
     index_to_remove = 1
     for i = 1:length(old_controls)
@@ -141,15 +153,20 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
 
     # add new shutoff valve controls
     for tx in 1:length(keys(solution))
-        for (key,shutoff_valve_dict) in solution[string(tx)]["shutoff_valve"]
-            shutoff_valve_name = data["pipe"][key]["name"]
-            shutoff_valve_obj = wn.get_link(shutoff_valve_name)
-            shutoff_valve_status = shutoff_valve_dict["status"]
-            act = wntrctrls.ControlAction(shutoff_valve_obj,"status",shutoff_valve_status)
-            cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*3600)
-            ctrl = wntrctrls.Control(cond,act)
-            ctrl_name = join(["Control_",string(shutoff_valve_name),string("_"),string(tx-1)])
-            wn.add_control(ctrl_name,ctrl)
+        for (key,shutoff_valve_dict) in solution[string(tx)]["valve"]
+
+            shutoff_valve_name = data["valve"][key]["name"]
+            if shutoff_valve_name in shutoff_valve_set
+
+
+                shutoff_valve_obj = wn.get_link(shutoff_valve_name)
+                shutoff_valve_status = shutoff_valve_dict["status"]
+                act = wntrctrls.ControlAction(shutoff_valve_obj,"status",shutoff_valve_status)
+                cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*3600)
+                ctrl = wntrctrls.Control(cond,act)
+                ctrl_name = join(["Control_",string(shutoff_valve_name),string("_"),string(tx-1)])
+                wn.add_control(ctrl_name,ctrl)
+            end
         end
     end
 
