@@ -17,16 +17,25 @@ module WaterModelsAnalytics
 
     import Plots
 
+    # using PyPlot
+
     # Python imports.
     import PyCall
     import PyCall: PyObject, @pycall
     const pgv = PyCall.PyNULL()
+    const wntr = PyCall.PyNULL()
+    const wntrctrls = PyCall.PyNULL()
 
     # Create our module-level logger (this will get precompiled).
     const _LOGGER = Memento.getlogger(@__MODULE__)
 
     function __init__()
         copy!(pgv, PyCall.pyimport("pygraphviz"))
+        copy!(wntr, PyCall.pyimport("wntr"))
+        copy!(wntrctrls, PyCall.pyimport("wntr.network.controls"))
+
+
+
 
         # Register the module-level logger at runtime so users can access the logger via
         # `getlogger(WaterModelsAnalytics)` NOTE: If this line is not included, then the
@@ -50,9 +59,20 @@ module WaterModelsAnalytics
     end
 
     include("graph/common.jl")
+    include("analysis/simulation.jl")
+    include("analysis/validation.jl")
+    include("analysis/visualization.jl")
+
+
 
     export build_graph
     export write_graph
     export colorbar
     export write_visualization
+
+
+    export simulate
+    export validate
+    export compare_tank_head
+
 end
