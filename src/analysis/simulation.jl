@@ -76,10 +76,12 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
             link_name = data[ltype][key]["name"]
             node_to_index = string(data[ltype][key]["node_to"])
             node_fr_index = string(data[ltype][key]["node_fr"])
+
             node_to_name = data["node"][node_to_index]["source_id"][2]
             node_fr_name = data["node"][node_fr_index]["source_id"][2]
+
             for tank_name in tank_set
-                if (node_to_name == arti_node_dict[tank_name]) | (node_fr_name == arti_node_dict[tank_name])
+                if ((node_to_name == tank_name) & !(node_fr_name == tank_name)) | (!(node_to_name == tank_name) & (node_fr_name == tank_name))
                     if !(link_name == arti_link_dict[tank_name])
                         push!(tank_link_dict[tank_name],link_name)
                     end
@@ -88,6 +90,7 @@ function simulate(data::Dict{String,Any}, solution::Dict{String,Any},
 
         end
     end
+
 
     ## add artificial nodes and links to tanks in wn 
     for tank_name in tank_set
