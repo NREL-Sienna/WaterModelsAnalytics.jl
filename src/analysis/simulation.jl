@@ -160,14 +160,12 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
 
             shutoff_valve_name = wm_data["nw"]["1"]["valve"][key]["name"]
             if shutoff_valve_name in shutoff_valve_set
-
-
                 shutoff_valve_obj = wn.get_link(shutoff_valve_name)
-                shutoff_valve_status = shutoff_valve_dict["status"]
+                shutoff_valve_status = round(shutoff_valve_dict["status"])
                 act = wntrctrls.ControlAction(shutoff_valve_obj,"status",shutoff_valve_status)
                 cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*3600)
                 ctrl = wntrctrls.Control(cond,act)
-                ctrl_name = join(["Control_",string(shutoff_valve_name),string("_"),string(tx-1)])
+                ctrl_name = join(["Valve_control_",string(shutoff_valve_name),string("_"),string(tx-1)])
                 wn.add_control(ctrl_name,ctrl)
             end
         end
@@ -178,18 +176,18 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         for (key,pump_dict) in wm_solution["solution"]["nw"][string(tx)]["pump"]
             pump_name = wm_data["nw"]["1"]["pump"][key]["name"] # epanet name
             pump_obj = wn.get_link(pump_name)
-            pump_status = pump_dict["status"]
+            pump_status = round(pump_dict["status"])
             act = wntrctrls.ControlAction(pump_obj,"status",pump_status)
             cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*3600)
             ctrl = wntrctrls.Control(cond,act)
-            ctrl_name = join(["Control_",string(pump_name),string("_"),string(tx-1)])
+            ctrl_name = join(["Pump_control_",string(pump_name),string("_"),string(tx-1)])
             wn.add_control(ctrl_name,ctrl)
         end
     end
 
     # WNTR simulation 
     wns = wntr.sim.EpanetSimulator(wn)
-    wnres = wns.run_sim()
+    wnres = wns.run_sim(file_prefix=string(rand(Int,1)))
     wnlinks = wnres.link
     wnnodes = wnres.node
 
