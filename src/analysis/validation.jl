@@ -7,17 +7,17 @@ using DataFrames
 
 # compare nodes
 function get_node_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, node_id)
-    duration = length(wm_solution["solution"]["nw"])            # number of time steps
+    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     node_name = wm_data["nw"]["1"]["node"][node_id]["source_id"][2]
 
-    elevation = Array{Float64,1}(undef,duration)
-    head_wntr = Array{Float64,1}(undef,duration)
-    head_watermodels = Array{Float64,1}(undef,duration)
-    pressure_wntr = Array{Float64,1}(undef,duration)
-    pressure_watermodels = Array{Float64,1}(undef,duration)
+    elevation = Array{Float64,1}(undef,num_time_step)
+    head_wntr = Array{Float64,1}(undef,num_time_step)
+    head_watermodels = Array{Float64,1}(undef,num_time_step)
+    pressure_wntr = Array{Float64,1}(undef,num_time_step)
+    pressure_watermodels = Array{Float64,1}(undef,num_time_step)
     
-    for t in 1:duration
+    for t in 1:num_time_step
         elevation[t] = wntr_data.nodes._data[node_name].elevation
         head_wntr[t] = wntr_simulation.node["head"][node_name].values[t]
         head_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][node_id]["h"]
@@ -25,7 +25,7 @@ function get_node_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, node_
         pressure_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][node_id]["p"]
     end
 
-    node_df = DataFrame(time = 1:time_step:time_step*duration, elevation = vec(elevation), 
+    node_df = DataFrame(time = 1:time_step:time_step*num_time_step, elevation = vec(elevation), 
         head_wntr = vec(head_wntr), head_watermodels = vec(head_watermodels),
         pressure_wntr = vec(pressure_wntr), pressure_watermodels = vec(pressure_watermodels))
 
@@ -34,25 +34,37 @@ end
 
 # compare tanks
 function get_tank_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, tank_id)
-    duration = length(wm_solution["solution"]["nw"])            # number of time steps
+    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     tank_name = wm_data["nw"]["1"]["tank"][tank_id]["source_id"][2]
     diameter = wntr_data.nodes._data[tank_name].diameter
 
-    volume_wntr = Array{Float64,1}(undef,duration)
-    volume_watermodels = Array{Float64,1}(undef,duration)
-    level_wntr = Array{Float64,1}(undef,duration)
-    level_watermodels = Array{Float64,1}(undef,duration)
+    volume_wntr = Array{Float64,1}(undef,num_time_step)
+    volume_watermodels = Array{Float64,1}(undef,num_time_step)
+    level_wntr = Array{Float64,1}(undef,num_time_step)
+    level_watermodels = Array{Float64,1}(undef,num_time_step)
 
-    for t in 1:duration
+    # find the artificial node attached to the tank
+    artificial_node = " "
+    for (key,valve) in wm_data["nw"]["1"]["valve"]
+        artificial_link = wm_data["nw"]["1"]["valve"][key]["source_id"][2] # not necessarily an artifical link
+        node_to_index = string(wm_data["nw"]["1"]["valve"][key]["node_to"])
+        node_fr_index = string(wm_data["nw"]["1"]["valve"][key]["node_fr"])
+        if wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2] == tank_name
+            artificial_node = node_fr_index
+        elseif wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2] == tank_name
+            artificial_node = node_to_index
+        end
+    end
+    
+    for t in 1:num_time_step
         volume_wntr[t] = wntr_simulation.node["pressure"][tank_name].values[t]*(1/4*pi*diameter^2)
         volume_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["tank"][tank_id]["V"]
-
         level_wntr[t] = wntr_simulation.node["pressure"][tank_name].values[t]
-        level_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["tank"][tank_id]["V"]/(1/4*pi*diameter^2)
+        level_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][artificial_node]["p"]
     end
 
-    tank_df = DataFrame(time = 1:time_step:time_step*duration, volume_wntr = vec(volume_wntr), volume_watermodels = vec(volume_watermodels), 
+    tank_df = DataFrame(time = 1:time_step:time_step*num_time_step, volume_wntr = vec(volume_wntr), volume_watermodels = vec(volume_watermodels), 
         level_wntr = vec(level_wntr), level_watermodels = vec(level_watermodels) )
 
     return tank_df
@@ -66,28 +78,33 @@ function get_link_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, link_
         link_type = "short_pipe"
     elseif link_id in keys(wm_data["nw"]["1"]["valve"])
         link_type = "valve"
+    elseif link_id in keys(wm_data["nw"]["1"]["regulator"])
+        link_type = "regulator"
     else
         link_type = "pump"
     end
 
-    duration = length(wm_solution["solution"]["nw"])            # number of time steps
+    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     link_name = wm_data["nw"]["1"][link_type][link_id]["source_id"][2]
-    flow_wntr = Array{Float64,1}(undef,duration)
-    flow_watermodels = Array{Float64,1}(undef,duration)
-    head_loss_wntr = Array{Float64,1}(undef,duration)
-    head_loss_watermodels = Array{Float64,1}(undef,duration)
+    flow_wntr = Array{Float64,1}(undef,num_time_step)
+    flow_watermodels = Array{Float64,1}(undef,num_time_step)
+    head_loss_wntr = Array{Float64,1}(undef,num_time_step)
+    head_loss_watermodels = Array{Float64,1}(undef,num_time_step)
 
-    for t in 1:duration
+    start_node_id = wm_data["nw"]["1"][link_type][link_id]["node_fr"]
+    end_node_id = wm_data["nw"]["1"][link_type][link_id]["node_to"]
+    start_node_name = wntr_data.links._data[link_name].start_node_name
+    end_node_name = wntr_data.links._data[link_name].end_node_name
+
+    for t in 1:num_time_step
         flow_wntr[t] = wntr_simulation.link["flowrate"][link_name].values[t]
         flow_watermodels[t] = wm_solution["solution"]["nw"][string(t)][link_type][link_id]["q"]
-        start_node = wntr_data.links._data[link_name].start_node_name
-        end_node = wntr_data.links._data[link_name].end_node_name
-        head_loss_wntr[t] = wntr_simulation.node["head"][start_node].values[t]-wntr_simulation.node["head"][end_node].values[t]
-        head_loss_watermodels[t] = -1*wm_solution["solution"]["nw"][string(t)][link_type][link_id]["dhn"]+wm_solution["solution"]["nw"][string(t)][link_type][link_id]["dhp"]
+        head_loss_wntr[t] = wntr_simulation.node["head"][start_node_name].values[t]-wntr_simulation.node["head"][end_node_name].values[t]
+        head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
 
-    link_df = DataFrame(time = 1:time_step:time_step*duration, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
+    link_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
         head_loss_wntr = vec(head_loss_wntr), head_loss_watermodels = vec(head_loss_watermodels) )
 
     return link_df
@@ -95,24 +112,27 @@ end
 
 # compare pipes
 function get_pipe_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pipe_id)
-    duration = length(wm_solution["solution"]["nw"])            # number of time steps
+    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     pipe_name = wm_data["nw"]["1"]["pipe"][pipe_id]["source_id"][2]
-    flow_wntr = Array{Float64,1}(undef,duration)
-    flow_watermodels = Array{Float64,1}(undef,duration)
-    head_loss_wntr = Array{Float64,1}(undef,duration)
-    head_loss_watermodels = Array{Float64,1}(undef,duration)
+    flow_wntr = Array{Float64,1}(undef,num_time_step)
+    flow_watermodels = Array{Float64,1}(undef,num_time_step)
+    head_loss_wntr = Array{Float64,1}(undef,num_time_step)
+    head_loss_watermodels = Array{Float64,1}(undef,num_time_step)
 
-    for t in 1:duration
+    start_node_id = wm_data["nw"]["1"]["pipe"][pipe_id]["node_fr"]
+    end_node_id = wm_data["nw"]["1"]["pipe"][pipe_id]["node_to"]
+    start_node_name = wntr_data.links._data[pipe_name].start_node_name
+    end_node_name = wntr_data.links._data[pipe_name].end_node_name
+
+    for t in 1:num_time_step
         flow_wntr[t] = wntr_simulation.link["flowrate"][pipe_name].values[t]
         flow_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["pipe"][pipe_id]["q"]
-        start_node = wntr_data.links._data[pipe_name].start_node_name
-        end_node = wntr_data.links._data[pipe_name].end_node_name
-        head_loss_wntr[t] = wntr_simulation.node["head"][start_node].values[t]-wntr_simulation.node["head"][end_node].values[t]
-        head_loss_watermodels[t] = -1*wm_solution["solution"]["nw"][string(t)]["pipe"][pipe_id]["dhn"]+wm_solution["solution"]["nw"][string(t)]["pipe"][pipe_id]["dhp"]
+        head_loss_wntr[t] = wntr_simulation.node["head"][start_node_name].values[t]-wntr_simulation.node["head"][end_node_name].values[t]
+        head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
     
-    pipe_df = DataFrame(time = 1:time_step:time_step*duration, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
+    pipe_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
         head_loss_wntr = vec(head_loss_wntr), head_loss_watermodels = vec(head_loss_watermodels) )
 
     return pipe_df
@@ -120,24 +140,27 @@ end
 
 # compare short pipes
 function get_short_pipe_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,short_pipe_id)
-    duration = length(wm_solution["solution"]["nw"])            # number of time steps
+    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     short_pipe_name = wm_data["nw"]["1"]["short_pipe"][short_pipe_id]["source_id"][2]
-    flow_wntr = Array{Float64,1}(undef,duration)
-    flow_watermodels = Array{Float64,1}(undef,duration)
-    head_loss_wntr = Array{Float64,1}(undef,duration)
-    head_loss_watermodels = Array{Float64,1}(undef,duration)
+    flow_wntr = Array{Float64,1}(undef,num_time_step)
+    flow_watermodels = Array{Float64,1}(undef,num_time_step)
+    head_loss_wntr = Array{Float64,1}(undef,num_time_step)
+    head_loss_watermodels = Array{Float64,1}(undef,num_time_step)
 
-    for t in 1:duration
+    start_node_id = wm_data["nw"]["1"]["short_pipe"][short_pipe_id]["node_fr"]
+    end_node_id = wm_data["nw"]["1"]["short_pipe"][short_pipe_id]["node_to"]
+    start_node_name = wntr_data.links._data[short_pipe_name].start_node_name
+    end_node_name = wntr_data.links._data[short_pipe_name].end_node_name
+
+    for t in 1:num_time_step
         flow_wntr[t] = wntr_simulation.link["flowrate"][short_pipe_name].values[t]
         flow_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["short_pipe"][short_pipe_id]["q"]
-        start_node = wntr_data.links._data[short_pipe_name].start_node_name
-        end_node = wntr_data.links._data[short_pipe_name].end_node_name
-        head_loss_wntr[t] = wntr_simulation.node["head"][start_node].values[t]-wntr_simulation.node["head"][end_node].values[t]
-        head_loss_watermodels[t] = -1*wm_solution["solution"]["nw"][string(t)]["short_pipe"][short_pipe_id]["dhn"]+wm_solution["solution"]["nw"][string(t)]["short_pipe"][short_pipe_id]["dhp"]
+        head_loss_wntr[t] = wntr_simulation.node["head"][start_node_name].values[t]-wntr_simulation.node["head"][end_node_name].values[t]
+        head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
     
-    short_pipe_df = DataFrame(time = 1:time_step:time_step*duration, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
+    short_pipe_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
         head_loss_wntr = vec(head_loss_wntr), head_loss_watermodels = vec(head_loss_watermodels) )
 
     return short_pipe_df
@@ -145,24 +168,29 @@ end
 
 # compare valves
 function get_valve_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,valve_id)
-    duration = length(wm_solution["solution"]["nw"])            # number of time steps
+    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     valve_name = wm_data["nw"]["1"]["valve"][valve_id]["source_id"][2]
-    flow_wntr = Array{Float64,1}(undef,duration)
-    flow_watermodels = Array{Float64,1}(undef,duration)
-    head_loss_wntr = Array{Float64,1}(undef,duration)
-    head_loss_watermodels = Array{Float64,1}(undef,duration)
+    flow_wntr = Array{Float64,1}(undef,num_time_step)
+    flow_watermodels = Array{Float64,1}(undef,num_time_step)
+    head_loss_wntr = Array{Float64,1}(undef,num_time_step)
+    head_loss_watermodels = Array{Float64,1}(undef,num_time_step)
 
-    for t in 1:duration
+    start_node_id = wm_data["nw"]["1"]["valve"][valve_id]["node_fr"]
+    end_node_id = wm_data["nw"]["1"]["valve"][valve_id]["node_to"]
+    start_node_name = wntr_data.links._data[valve_name].start_node_name
+    end_node_name = wntr_data.links._data[valve_name].end_node_name
+
+    for t in 1:num_time_step
         flow_wntr[t] = wntr_simulation.link["flowrate"][valve_name].values[t]
         flow_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["valve"][valve_id]["q"]
         start_node = wntr_data.links._data[valve_name].start_node_name
         end_node = wntr_data.links._data[valve_name].end_node_name
-        head_loss_wntr[t] = wntr_simulation.node["head"][start_node].values[t]-wntr_simulation.node["head"][end_node].values[t]
-        head_loss_watermodels[t] = -1*wm_solution["solution"]["nw"][string(t)]["valve"][valve_id]["dhn"]+wm_solution["solution"]["nw"][string(t)]["valve"][valve_id]["dhp"]
+        head_loss_wntr[t] = wntr_simulation.node["head"][start_node_name].values[t]-wntr_simulation.node["head"][end_node_name].values[t]
+        head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
     
-    valve_df = DataFrame(time = 1:time_step:time_step*duration, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
+    valve_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
         head_loss_wntr = vec(head_loss_wntr), head_loss_watermodels = vec(head_loss_watermodels) )
 
     return valve_df
@@ -170,19 +198,24 @@ end
 
 # compare pumps
 function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_id)
-    duration = length(wm_solution["solution"]["nw"])            # number of time steps
+    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     pump_name = wm_data["nw"]["1"]["pump"][pump_id]["source_id"][2]
     pump_obj = wntr_data.get_link(pump_name)
-    status = Array{Float64,1}(undef,duration)
-    flow_wntr = Array{Float64,1}(undef,duration)
-    flow_watermodels = Array{Float64,1}(undef,duration)
-    head_gain_wntr = Array{Float64,1}(undef,duration)
-    head_gain_watermodels = Array{Float64,1}(undef,duration)
-    power_wntr = Array{Float64,1}(undef,duration)               # kW
-    power_watermodels = Array{Float64,1}(undef,duration)        # kW
-    cost_wntr = Array{Float64,1}(undef,duration)                # $
-    cost_watermodels = Array{Float64,1}(undef,duration)         # $
+    status = Array{Float64,1}(undef,num_time_step)
+    flow_wntr = Array{Float64,1}(undef,num_time_step)
+    flow_watermodels = Array{Float64,1}(undef,num_time_step)
+    head_gain_wntr = Array{Float64,1}(undef,num_time_step)
+    head_gain_watermodels = Array{Float64,1}(undef,num_time_step)
+    power_wntr = Array{Float64,1}(undef,num_time_step)               # Watt
+    power_watermodels = Array{Float64,1}(undef,num_time_step)        # Watt
+    cost_wntr = Array{Float64,1}(undef,num_time_step)                # $
+    cost_watermodels = Array{Float64,1}(undef,num_time_step)         # $
+
+    start_node_id = wm_data["nw"]["1"]["pump"][pump_id]["node_fr"]
+    end_node_id = wm_data["nw"]["1"]["pump"][pump_id]["node_to"]
+    start_node_name = wntr_data.links._data[pump_name].start_node_name
+    end_node_name = wntr_data.links._data[pump_name].end_node_name
 
     function compute_pump_power(pump_obj,q,dh,wntr_data)
         eff_curve = wntr_data.get_curve(pump_obj.efficiency).points
@@ -204,19 +237,17 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
             println("No pump efficiency provided, 75% is used")
             eff = 0.75
         end
-        power = 9.81*dh*q/eff # kilowatt (kW)
+        power = 9.81*1000*dh*q/eff # Watt
         return power
     end
 
-    for t in 1:duration
+    for t in 1:num_time_step
         status[t] = wm_solution["solution"]["nw"][string(t)]["pump"][pump_id]["status"]
         flow_wntr[t] = wntr_simulation.link["flowrate"][pump_name].values[t]
         flow_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["pump"][pump_id]["q"]
-        start_node = wntr_data.links._data[pump_name].start_node_name
-        end_node = wntr_data.links._data[pump_name].end_node_name
         # the head gain here measures the head difference, not necessarily the lift of an operating pump
-        head_gain_wntr[t] = wntr_simulation.node["head"][end_node].values[t]-wntr_simulation.node["head"][start_node].values[t]
-        head_gain_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["pump"][pump_id]["dhn"]-wm_solution["solution"]["nw"][string(t)]["pump"][pump_id]["dhp"]
+        head_gain_wntr[t] = round(status[t])*(wntr_simulation.node["head"][end_node_name].values[t]-wntr_simulation.node["head"][start_node_name].values[t])
+        head_gain_watermodels[t] = round(status[t])*(wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"])
 
         if status[t] == 0
             power_wntr[t] = 0
@@ -224,13 +255,13 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
         else
             power_wntr[t] = compute_pump_power(pump_obj,flow_wntr[t],head_gain_wntr[t],wntr_data)
             power_watermodels[t] = compute_pump_power(pump_obj,flow_watermodels[t],head_gain_watermodels[t],wntr_data)
-            energy_price = wm_data["nw"][string(t)]["pump"][pump_id]["energy_price"]*3600*1000    # $/kWh
+            energy_price = wm_data["nw"][string(t)]["pump"][pump_id]["energy_price"]*3600    # $/Wh
             cost_wntr[t] = power_wntr[t]*time_step*energy_price
             cost_watermodels[t] = power_watermodels[t]*time_step*energy_price
         end
     end
 
-    pump_df = DataFrame(time = 1:time_step:time_step*duration, status = vec(status), flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
+    pump_df = DataFrame(time = 1:time_step:time_step*num_time_step, status = vec(status), flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
         head_gain_wntr = vec(head_gain_wntr), head_gain_watermodels = vec(head_gain_watermodels),
         power_wntr = vec(power_wntr), power_watermodels = vec(power_watermodels),
         cost_wntr = vec(cost_wntr), cost_watermodels = vec(cost_watermodels))

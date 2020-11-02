@@ -18,7 +18,6 @@ module WaterModelsAnalytics
     import Plots
     import DataFrames
 
-
     # Python imports.
     import PyCall
     import PyCall: PyObject, @pycall

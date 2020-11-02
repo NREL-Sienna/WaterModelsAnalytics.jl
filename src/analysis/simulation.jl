@@ -3,6 +3,7 @@
 Perform EPANET hydraulic simulation (via WNTR) using controls in WM
 wm_solution. 
 """
+
 function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
                      inpfilepath::String)
 
@@ -10,29 +11,29 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     wn = wntr.network.model.WaterNetworkModel(inpfilepath)
 
     # store pump names in a set
-    pump_set = Set()
-    for (key,pump) in wm_solution["solution"]["nw"]["1"]["pump"]
-        pump_name = wm_data["nw"]["1"]["pump"][key]["name"] # epanet name
-        push!(pump_set, pump_name)
-    end
+    pump_set = [pump["name"] for (i, pump) in wm_data["nw"]["1"]["pump"]]
 
     # store shutoff valve names in a set
     shutoff_valve_set = Set()
     for (key,shutoff_valve) in wm_solution["solution"]["nw"]["1"]["valve"]
-        valve_name = wm_data["nw"]["1"]["valve"][key]["name"]
+        valve_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
         if string(wm_data["nw"]["1"]["valve"][key]["flow_direction"]) == "UNKNOWN"
             push!(shutoff_valve_set,valve_name)
         end
     end
 
+
     # store tank names in a set
     tank_set = Set()
-    tank_index_dict = Dict{String,String}()
+    tank_index_dict = Dict{String,String}()     # index designated for tanks 
+    tank_node_id_dict = Dict{String,String}()   # node id of tanks
     for (key,tank) in wm_solution["solution"]["nw"]["1"]["tank"]
-        tank_name = wm_data["nw"]["1"]["tank"][key]["name"] # epanet name
+        tank_name = wm_data["nw"]["1"]["tank"][key]["source_id"][2] # epanet name
         push!(tank_set, tank_name)
         tank_index_dict[tank_name] = key
+        tank_node_id_dict[tank_name] = string(wm_data["nw"]["1"]["tank"][key]["node"])
     end
+
 
     # store artificial links and nodes connected to tanks in a Dict
     arti_link_dict = Dict{String,String}()
@@ -45,49 +46,34 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
 
     # retrieve added artificial nodes and links for tanks
     for (key,valve) in wm_data["nw"]["1"]["valve"]
-        artificial_link = wm_data["nw"]["1"]["valve"][key]["name"] # not necessarily an artifical link
+        artificial_link = wm_data["nw"]["1"]["valve"][key]["source_id"][2] # not necessarily an artifical link
         node_to_index = string(wm_data["nw"]["1"]["valve"][key]["node_to"])
         node_fr_index = string(wm_data["nw"]["1"]["valve"][key]["node_fr"])
-
         if wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2] in tank_set
             tank_name = wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]
             arti_link_dict[tank_name] = artificial_link
-            if wm_data["nw"]["1"]["node"][node_to_index] == tank_index_dict[tank_name]
-                artificial_node = wm_data["nw"]["1"]["node"][node_fr_index]["name"]
-            else
-                artificial_node = wm_data["nw"]["1"]["node"][node_to_index]["name"]
-            end
-            arti_node_dict[tank_name] = artificial_node
+            arti_node_dict[tank_name] = node_fr_index
         elseif wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2] in tank_set
             tank_name = wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]
             arti_link_dict[tank_name] = artificial_link
-            if wm_data["nw"]["1"]["node"][node_fr_index] == tank_index_dict[tank_name]
-                artificial_node = wm_data["nw"]["1"]["node"][node_to_index]["name"]
-            else
-                artificial_node = wm_data["nw"]["1"]["node"][node_fr_index]["name"]
-            end
-            arti_node_dict[tank_name] = artificial_node
+            arti_node_dict[tank_name] = node_to_index
         end
     end
 
+    # retrieve original links connected to each tank
     link_types = ["pipe", "valve", "pump"]
     for ltype in link_types
         for (key, link) in wm_solution["solution"]["nw"]["1"][ltype]
-            link_name = wm_data["nw"]["1"][ltype][key]["name"]
+            link_name = wm_data["nw"]["1"][ltype][key]["source_id"][2]
             node_to_index = string(wm_data["nw"]["1"][ltype][key]["node_to"])
             node_fr_index = string(wm_data["nw"]["1"][ltype][key]["node_fr"])
-
             node_to_name = wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]
             node_fr_name = wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]
-
             for tank_name in tank_set
                 if ((node_to_name == tank_name) & !(node_fr_name == tank_name)) | (!(node_to_name == tank_name) & (node_fr_name == tank_name))
-                    if !(link_name == arti_link_dict[tank_name])
-                        push!(tank_link_dict[tank_name],link_name)
-                    end
+                    push!(tank_link_dict[tank_name],link_name)
                 end
             end
-
         end
     end
 
@@ -98,13 +84,12 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         diameter = wn.nodes._data[tank_name].diameter
 
         # enforce the initial levels of tanks 
-        wn.nodes._data[tank_name].init_level = wm_solution["solution"]["nw"]["1"]["tank"][tank_index_dict[tank_name]]["V"]/(1/4*pi*diameter^2)
+        wn.nodes._data[tank_name].init_level = wm_solution["solution"]["nw"]["1"]["node"][arti_node_dict[tank_name]]["p"]
 
         # add artificial node and link
         wn.add_junction(arti_node_dict[tank_name],base_demand=0,elevation=tank_elevation)
         wn.add_pipe(arti_link_dict[tank_name],start_node_name=arti_node_dict[tank_name],end_node_name=tank_name,
         length=1e-3,diameter=1,roughness=100,minor_loss=0,status="Open",check_valve_flag=false)
-
 
         # save information of tank links, re-connect them to artificial nodes
         for link_name in tank_link_dict[tank_name]
@@ -152,18 +137,19 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     end
 
 
-
+    # retrieve the duration of a time step of the number of time steps
+    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
+    time_step = wm_data["time_step"]/3600                            # duration per time step (hour)
 
     # add new shutoff valve controls
-    for tx in 1:length(keys(wm_solution["solution"]["nw"]))
+    for tx in 1:num_time_step
         for (key,shutoff_valve_dict) in wm_solution["solution"]["nw"][string(tx)]["valve"]
-
-            shutoff_valve_name = wm_data["nw"]["1"]["valve"][key]["name"]
+            shutoff_valve_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
             if shutoff_valve_name in shutoff_valve_set
                 shutoff_valve_obj = wn.get_link(shutoff_valve_name)
                 shutoff_valve_status = round(shutoff_valve_dict["status"])
                 act = wntrctrls.ControlAction(shutoff_valve_obj,"status",shutoff_valve_status)
-                cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*3600)
+                cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*time_step*3600)
                 ctrl = wntrctrls.Control(cond,act)
                 ctrl_name = join(["Valve_control_",string(shutoff_valve_name),string("_"),string(tx-1)])
                 wn.add_control(ctrl_name,ctrl)
@@ -172,13 +158,13 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     end
 
     # add new pump controls
-    for tx in 1:length(keys(wm_solution["solution"]["nw"]))
+    for tx in 1:num_time_step
         for (key,pump_dict) in wm_solution["solution"]["nw"][string(tx)]["pump"]
-            pump_name = wm_data["nw"]["1"]["pump"][key]["name"] # epanet name
+            pump_name = wm_data["nw"]["1"]["pump"][key]["source_id"][2] # epanet name
             pump_obj = wn.get_link(pump_name)
             pump_status = round(pump_dict["status"])
             act = wntrctrls.ControlAction(pump_obj,"status",pump_status)
-            cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*3600)
+            cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*time_step*3600)
             ctrl = wntrctrls.Control(cond,act)
             ctrl_name = join(["Pump_control_",string(pump_name),string("_"),string(tx-1)])
             wn.add_control(ctrl_name,ctrl)
@@ -187,7 +173,7 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
 
     # WNTR simulation 
     wns = wntr.sim.EpanetSimulator(wn)
-    wnres = wns.run_sim(file_prefix=string(rand(Int,1)))
+    wnres = wns.run_sim(file_prefix=string(rand(Int,1)[1]))
     wnlinks = wnres.link
     wnnodes = wnres.node
 
