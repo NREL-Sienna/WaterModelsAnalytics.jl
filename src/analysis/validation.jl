@@ -44,24 +44,13 @@ function get_tank_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, tank_
     level_wntr = Array{Float64,1}(undef,num_time_step)
     level_watermodels = Array{Float64,1}(undef,num_time_step)
 
-    # find the artificial node attached to the tank
-    artificial_node = " "
-    for (key,valve) in wm_data["nw"]["1"]["valve"]
-        artificial_link = wm_data["nw"]["1"]["valve"][key]["source_id"][2] # not necessarily an artifical link
-        node_to_index = string(wm_data["nw"]["1"]["valve"][key]["node_to"])
-        node_fr_index = string(wm_data["nw"]["1"]["valve"][key]["node_fr"])
-        if wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2] == tank_name
-            artificial_node = node_fr_index
-        elseif wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2] == tank_name
-            artificial_node = node_to_index
-        end
-    end
+    tank_node = string(wm_data["nw"]["1"]["tank"][tank_id]["node"])
     
     for t in 1:num_time_step
         volume_wntr[t] = wntr_simulation.node["pressure"][tank_name].values[t]*(1/4*pi*diameter^2)
         volume_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["tank"][tank_id]["V"]
         level_wntr[t] = wntr_simulation.node["pressure"][tank_name].values[t]
-        level_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][artificial_node]["p"]
+        level_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][tank_node]["p"]
     end
 
     tank_df = DataFrame(time = 1:time_step:time_step*num_time_step, volume_wntr = vec(volume_wntr), volume_watermodels = vec(volume_watermodels), 

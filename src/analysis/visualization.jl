@@ -1,10 +1,11 @@
+# in future versions, let's use the dataframe functions and then plot from the dataframe,
+# JJS 11/2/20
+
+using Plots
 
 """
 Compare the fluctuations in tank levels calculated from WaterModels and WNTR
 """
-
-using Plots
-
 function compare_tank_level(wm_data,wm_solution,wntr_data,wntr_simulation, outfilepath::String, tank_id)
     num_time_step = length(wm_solution["solution"]["nw"])    # number of time steps 
     tank_name = wm_data["nw"]["1"]["tank"][tank_id]["source_id"][2]
@@ -12,22 +13,11 @@ function compare_tank_level(wm_data,wm_solution,wntr_data,wntr_simulation, outfi
     level_wntr = Array{Float64,1}(undef,num_time_step)
     level_watermodels = Array{Float64,1}(undef,num_time_step)
 
-    # find the artificial node attached to the tank
-    artificial_node = " "
-    for (key,valve) in wm_data["nw"]["1"]["valve"]
-        artificial_link = wm_data["nw"]["1"]["valve"][key]["source_id"][2] # not necessarily an artifical link
-        node_to_index = string(wm_data["nw"]["1"]["valve"][key]["node_to"])
-        node_fr_index = string(wm_data["nw"]["1"]["valve"][key]["node_fr"])
-        if wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2] == tank_name
-            artificial_node = node_fr_index
-        elseif wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2] == tank_name
-            artificial_node = node_to_index
-        end
-    end
-
+    tank_node = string(wm_data["nw"]["1"]["tank"][tank_id]["node"])
+    
     for t in 1:num_time_step
         level_wntr[t] = wntr_simulation.node["pressure"][tank_name].values[t]
-        level_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][artificial_node]["p"]
+        level_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][tank_node]["p"]
     end
 
     p = plot(1:num_time_step,ones(num_time_step,1).*wntr_data.nodes._data[tank_name].min_level,label="Min level",linecolor=:black,linestyle=:dash)

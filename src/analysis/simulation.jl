@@ -77,14 +77,16 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         end
     end
 
-
+    # println(arti_node_dict)
+    # println(tank_node_id_dict)
+    
     ## add artificial nodes and links to tanks in wn 
     for tank_name in tank_set
         tank_elevation = wn.nodes._data[tank_name].elevation
         diameter = wn.nodes._data[tank_name].diameter
 
         # enforce the initial levels of tanks 
-        wn.nodes._data[tank_name].init_level = wm_solution["solution"]["nw"]["1"]["node"][arti_node_dict[tank_name]]["p"]
+        wn.nodes._data[tank_name].init_level = wm_solution["solution"]["nw"]["1"]["node"][tank_node_id_dict[tank_name]]["p"]
 
         # add artificial node and link
         wn.add_junction(arti_node_dict[tank_name],base_demand=0,elevation=tank_elevation)
@@ -142,6 +144,8 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     time_step = wm_data["time_step"]/3600                            # duration per time step (hour)
 
     # add new shutoff valve controls
+    # NOTE: controls only need to be specified if something changed for the time
+    # period. Something to work on in future versions, JJS 11/2/20
     for tx in 1:num_time_step
         for (key,shutoff_valve_dict) in wm_solution["solution"]["nw"][string(tx)]["valve"]
             shutoff_valve_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
@@ -174,8 +178,9 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     # WNTR simulation 
     wns = wntr.sim.EpanetSimulator(wn)
     wnres = wns.run_sim(file_prefix=string(rand(Int,1)[1]))
-    wnlinks = wnres.link
-    wnnodes = wnres.node
+    # not returned, so no need to create these variables, JJS 11/2/20
+    #wnlinks = wnres.link
+    #wnnodes = wnres.node
 
     println("----- WNTR Simulation Completed -----")
     return wn,wnres
