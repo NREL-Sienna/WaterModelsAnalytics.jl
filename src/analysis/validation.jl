@@ -25,9 +25,9 @@ function get_node_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, node_
         pressure_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][node_id]["p"]
     end
 
-    node_df = DataFrame(time = 1:time_step:time_step*num_time_step, elevation = vec(elevation), 
-        head_wntr = vec(head_wntr), head_watermodels = vec(head_watermodels),
-        pressure_wntr = vec(pressure_wntr), pressure_watermodels = vec(pressure_watermodels))
+    node_df = DataFrame(time = 1:time_step:time_step*num_time_step, elevation = elevation, 
+        head_wntr = head_wntr, head_watermodels = head_watermodels,
+        pressure_wntr = pressure_wntr, pressure_watermodels = pressure_watermodels)
 
     return node_df
 end
@@ -36,6 +36,11 @@ end
 function get_tank_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, tank_id)
     num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
+
+
+    println("------test------")
+    println(wm_data["nw"]["1"]["tank"])
+
     tank_name = wm_data["nw"]["1"]["tank"][tank_id]["source_id"][2]
     diameter = wntr_data.nodes._data[tank_name].diameter
 
@@ -53,8 +58,8 @@ function get_tank_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, tank_
         level_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][tank_node]["p"]
     end
 
-    tank_df = DataFrame(time = 1:time_step:time_step*num_time_step, volume_wntr = vec(volume_wntr), volume_watermodels = vec(volume_watermodels), 
-        level_wntr = vec(level_wntr), level_watermodels = vec(level_watermodels) )
+    tank_df = DataFrame(time = 1:time_step:time_step*num_time_step, volume_wntr = volume_wntr, volume_watermodels = volume_watermodels, 
+        level_wntr = level_wntr, level_watermodels = level_watermodels)
 
     return tank_df
 end
@@ -93,8 +98,8 @@ function get_link_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, link_
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
 
-    link_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
-        head_loss_wntr = vec(head_loss_wntr), head_loss_watermodels = vec(head_loss_watermodels) )
+    link_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+        head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return link_df
 end
@@ -121,8 +126,8 @@ function get_pipe_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pipe_i
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
     
-    pipe_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
-        head_loss_wntr = vec(head_loss_wntr), head_loss_watermodels = vec(head_loss_watermodels) )
+    pipe_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+        head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return pipe_df
 end
@@ -149,8 +154,8 @@ function get_short_pipe_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
     
-    short_pipe_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
-        head_loss_wntr = vec(head_loss_wntr), head_loss_watermodels = vec(head_loss_watermodels) )
+    short_pipe_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+        head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return short_pipe_df
 end
@@ -160,6 +165,7 @@ function get_valve_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,valve
     num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     valve_name = wm_data["nw"]["1"]["valve"][valve_id]["source_id"][2]
+
     flow_wntr = Array{Float64,1}(undef,num_time_step)
     flow_watermodels = Array{Float64,1}(undef,num_time_step)
     head_loss_wntr = Array{Float64,1}(undef,num_time_step)
@@ -178,9 +184,9 @@ function get_valve_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,valve
         head_loss_wntr[t] = wntr_simulation.node["head"][start_node_name].values[t]-wntr_simulation.node["head"][end_node_name].values[t]
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
-    
-    valve_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
-        head_loss_wntr = vec(head_loss_wntr), head_loss_watermodels = vec(head_loss_watermodels) )
+
+    valve_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+        head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return valve_df
 end
@@ -191,7 +197,8 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
     time_step = wm_data["time_step"]/3600                       # length per time step (hour)
     pump_name = wm_data["nw"]["1"]["pump"][pump_id]["source_id"][2]
     pump_obj = wntr_data.get_link(pump_name)
-    status = Array{Float64,1}(undef,num_time_step)
+    status_wntr = Array{Float64,1}(undef,num_time_step)
+    status_watermodels = Array{Float64,1}(undef,num_time_step)
     flow_wntr = Array{Float64,1}(undef,num_time_step)
     flow_watermodels = Array{Float64,1}(undef,num_time_step)
     head_gain_wntr = Array{Float64,1}(undef,num_time_step)
@@ -210,8 +217,11 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
         eff_curve = wntr_data.get_curve(pump_obj.efficiency).points
         if eff_curve != nothing
             for j in 1:length(eff_curve)
-                if j == length(eff_curve)
-                    eff = eff_curve[j][2]/100 # use the last Q-eff point
+                if (j == 1) & (q < eff_curve[j][1])
+                    eff = eff_curve[j][2]/100 # use the first Q-eff point when q < q_min on the eff curve
+                    break
+                elseif j == length(eff_curve)
+                    eff = eff_curve[j][2]/100 # use the last Q-eff point when q > q_max on the eff curve
                 elseif (q >= eff_curve[j][1]) & (q < eff_curve[j+1][1])
                     # linear interpolation of the efficiency curve
                     a1 = (eff_curve[j+1][1]-q)/(eff_curve[j+1][1]-eff_curve[j][1])
@@ -231,29 +241,27 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
     end
 
     for t in 1:num_time_step
-        status[t] = wm_solution["solution"]["nw"][string(t)]["pump"][pump_id]["status"]
+        status_wntr[t] = wntr_simulation.link["status"][pump_name].values[t]
+        status_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["pump"][pump_id]["status"]
         flow_wntr[t] = wntr_simulation.link["flowrate"][pump_name].values[t]
         flow_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["pump"][pump_id]["q"]
-        # the head gain here measures the head difference, not necessarily the lift of an operating pump
-        head_gain_wntr[t] = round(status[t])*(wntr_simulation.node["head"][end_node_name].values[t]-wntr_simulation.node["head"][start_node_name].values[t])
-        head_gain_watermodels[t] = round(status[t])*(wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"])
+        head_gain_wntr[t] = round(status_wntr[t])*(wntr_simulation.node["head"][end_node_name].values[t]-wntr_simulation.node["head"][start_node_name].values[t])
+        head_gain_watermodels[t] = round(status_watermodels[t])*(wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"])
 
-        if status[t] == 0
-            power_wntr[t] = 0
-            power_watermodels[t] = 0
-        else
-            power_wntr[t] = compute_pump_power(pump_obj,flow_wntr[t],head_gain_wntr[t],wntr_data)
-            power_watermodels[t] = compute_pump_power(pump_obj,flow_watermodels[t],head_gain_watermodels[t],wntr_data)
-            energy_price = wm_data["nw"][string(t)]["pump"][pump_id]["energy_price"]*3600    # $/Wh
-            cost_wntr[t] = power_wntr[t]*time_step*energy_price
-            cost_watermodels[t] = power_watermodels[t]*time_step*energy_price
-        end
+
+        power_wntr[t] = status_wntr[t]*compute_pump_power(pump_obj,flow_wntr[t],head_gain_wntr[t],wntr_data)
+        power_watermodels[t] = status_watermodels[t]*compute_pump_power(pump_obj,flow_watermodels[t],head_gain_watermodels[t],wntr_data)
+        energy_price = wm_data["nw"][string(t)]["pump"][pump_id]["energy_price"]*3600    # $/Wh
+        cost_wntr[t] = power_wntr[t]*time_step*energy_price
+        cost_watermodels[t] = power_watermodels[t]*time_step*energy_price
+        
     end
 
-    pump_df = DataFrame(time = 1:time_step:time_step*num_time_step, status = vec(status), flow_wntr = vec(flow_wntr), flow_watermodels = vec(flow_watermodels), 
-        head_gain_wntr = vec(head_gain_wntr), head_gain_watermodels = vec(head_gain_watermodels),
-        power_wntr = vec(power_wntr), power_watermodels = vec(power_watermodels),
-        cost_wntr = vec(cost_wntr), cost_watermodels = vec(cost_watermodels))
+    pump_df = DataFrame(time = 1:time_step:time_step*num_time_step, status_wntr = status_wntr, status_watermodels = status_watermodels, 
+        flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+        head_gain_wntr = head_gain_wntr, head_gain_watermodels = head_gain_watermodels,
+        power_wntr = power_wntr, power_watermodels = power_watermodels,
+        cost_wntr = cost_wntr, cost_watermodels = cost_watermodels)
 
     return pump_df
 end

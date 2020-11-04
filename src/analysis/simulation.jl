@@ -31,9 +31,7 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         tank_name = wm_data["nw"]["1"]["tank"][key]["source_id"][2] # epanet name
         push!(tank_set, tank_name)
         tank_index_dict[tank_name] = key
-        tank_node_id_dict[tank_name] = string(wm_data["nw"]["1"]["tank"][key]["node"])
-    end
-
+        tank_node_id_dict[tank_name] = string(wm_data["nw"]["1"]["tank"][key]["node"]
 
     # store artificial links and nodes connected to tanks in a Dict
     arti_link_dict = Dict{String,String}()
@@ -76,9 +74,6 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
             end
         end
     end
-
-    # println(arti_node_dict)
-    # println(tank_node_id_dict)
     
     ## add artificial nodes and links to tanks in wn 
     for tank_name in tank_set
@@ -90,6 +85,7 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
 
         # add artificial node and link
         wn.add_junction(arti_node_dict[tank_name],base_demand=0,elevation=tank_elevation)
+
         wn.add_pipe(arti_link_dict[tank_name],start_node_name=arti_node_dict[tank_name],end_node_name=tank_name,
         length=1e-3,diameter=1,roughness=100,minor_loss=0,status="Open",check_valve_flag=false)
 
@@ -109,9 +105,9 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
                 status = "Closed"
             end
             cv = wn.links._data[link_name].cv 
+
             # remove link
             wn.remove_link(link_name,with_control=true,force=true)
-
 
             # add the link back and connect to the artificial node
             if start_node_name == tank_name
@@ -124,7 +120,6 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         end
     end
 
- 
     # remove old controls
     old_controls = wn.control_name_list
     index_to_remove = 1
@@ -178,9 +173,6 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     # WNTR simulation 
     wns = wntr.sim.EpanetSimulator(wn)
     wnres = wns.run_sim(file_prefix=string(rand(Int,1)[1]))
-    # not returned, so no need to create these variables, JJS 11/2/20
-    #wnlinks = wnres.link
-    #wnnodes = wnres.node
 
     println("----- WNTR Simulation Completed -----")
     return wn,wnres
