@@ -16,6 +16,7 @@ module WaterModelsAnalytics
     using Printf
 
     import Plots
+    import DataFrames
 
     # Python imports.
     import PyCall
@@ -31,6 +32,7 @@ module WaterModelsAnalytics
         copy!(pgv, PyCall.pyimport("pygraphviz"))
         copy!(wntr, PyCall.pyimport("wntr"))
         copy!(wntrctrls, PyCall.pyimport("wntr.network.controls"))
+
 
 
         # Register the module-level logger at runtime so users can access the logger via
@@ -55,13 +57,27 @@ module WaterModelsAnalytics
     end
 
     include("graph/common.jl")
-    include("analysis/epanet.jl")
-    include("analysis/tank.jl")
+    include("analysis/simulation.jl")
+    include("analysis/validation.jl")
+    include("analysis/visualization.jl")
+
+
 
     export build_graph
     export write_graph
     export colorbar
     export write_visualization
-    export epanet_diff
-    export plot_tank_diff
+
+    export simulate
+    export get_node_dataframe
+    export get_tank_dataframe
+    export get_link_dataframe
+    export get_pipe_dataframe
+    export get_short_pipe_dataframe
+    export get_valve_dataframe
+    export get_pump_dataframe
+
+    # export compare_tank_head
+    export compare_tank_level
+
 end
