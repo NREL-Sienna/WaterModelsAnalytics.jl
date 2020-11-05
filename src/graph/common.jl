@@ -3,11 +3,14 @@
 # * redo adding solution information to the network with valve refactor
 # - parse regulators, throttle control valves, others???
 # * need to check whether epanet-data object can still be processed for visualization
+#   - it does work, but it is not capturing CVs because they are not separated from pipes;
+#     also, not sure how to catch shutoff valves; might want to correct these in WaterModels
 
 
 
 """
-Build networkx graph object from a WaterModels network dictionary parsed from an EPANET file.
+Build pygraphviz graph object from a WaterModels network dictionary parsed from an EPANET
+file.
 """
 function build_graph(data::Dict{String,Any},
                      solution::Union{Nothing, Dict{String,Any}} = nothing)
