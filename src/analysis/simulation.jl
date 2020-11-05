@@ -31,7 +31,8 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         tank_name = wm_data["nw"]["1"]["tank"][key]["source_id"][2] # epanet name
         push!(tank_set, tank_name)
         tank_index_dict[tank_name] = key
-        tank_node_id_dict[tank_name] = string(wm_data["nw"]["1"]["tank"][key]["node"]
+        tank_node_id_dict[tank_name] = string(wm_data["nw"]["1"]["tank"][key]["node"])
+    end
 
     # store artificial links and nodes connected to tanks in a Dict
     arti_link_dict = Dict{String,String}()
@@ -47,14 +48,21 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         artificial_link = wm_data["nw"]["1"]["valve"][key]["source_id"][2] # not necessarily an artifical link
         node_to_index = string(wm_data["nw"]["1"]["valve"][key]["node_to"])
         node_fr_index = string(wm_data["nw"]["1"]["valve"][key]["node_fr"])
+
         if wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2] in tank_set
-            tank_name = wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]
-            arti_link_dict[tank_name] = artificial_link
-            arti_node_dict[tank_name] = node_fr_index
-        elseif wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2] in tank_set
-            tank_name = wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]
-            arti_link_dict[tank_name] = artificial_link
-            arti_node_dict[tank_name] = node_to_index
+            if node_to_index != tank_node_id_dict[wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]]    # we are looking for the artificial node, NOT the tank node
+                tank_name = wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]
+                arti_link_dict[tank_name] = "al"*artificial_link    # "al" is a prefix that stands for "artificial link"
+                arti_node_dict[tank_name] = "an"*node_to_index      # "an" is a prefix that stands for "artificial node"
+            end
+        end
+
+        if wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2] in tank_set
+            if node_fr_index != tank_node_id_dict[wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]]    # we are looking for the artificial node, NOT the tank node
+                tank_name = wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]
+                arti_link_dict[tank_name] = "al"*artificial_link    # "al" is a prefix that stands for "artificial link"
+                arti_node_dict[tank_name] = "an"*node_fr_index      # "an" is a prefix that stands for "artificial node"
+            end
         end
     end
 
@@ -74,7 +82,7 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
             end
         end
     end
-    
+
     ## add artificial nodes and links to tanks in wn 
     for tank_name in tank_set
         tank_elevation = wn.nodes._data[tank_name].elevation
@@ -84,9 +92,8 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         wn.nodes._data[tank_name].init_level = wm_solution["solution"]["nw"]["1"]["node"][tank_node_id_dict[tank_name]]["p"]
 
         # add artificial node and link
-        wn.add_junction(arti_node_dict[tank_name],base_demand=0,elevation=tank_elevation)
-
-        wn.add_pipe(arti_link_dict[tank_name],start_node_name=arti_node_dict[tank_name],end_node_name=tank_name,
+        wn.add_junction(arti_node_dict[tank_name],base_demand=0,elevation=tank_elevation)  
+        wn.add_pipe(arti_link_dict[tank_name],start_node_name=arti_node_dict[tank_name],end_node_name=tank_name,   
         length=1e-3,diameter=1,roughness=100,minor_loss=0,status="Open",check_valve_flag=false)
 
         # save information of tank links, re-connect them to artificial nodes
@@ -145,6 +152,8 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         for (key,shutoff_valve_dict) in wm_solution["solution"]["nw"][string(tx)]["valve"]
             shutoff_valve_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
             if shutoff_valve_name in shutoff_valve_set
+                # the shutoff_valve always include a added prefix in its name in WNTR
+                shutoff_valve_name = "al"*shutoff_valve_name    
                 shutoff_valve_obj = wn.get_link(shutoff_valve_name)
                 shutoff_valve_status = round(shutoff_valve_dict["status"])
                 act = wntrctrls.ControlAction(shutoff_valve_obj,"status",shutoff_valve_status)
