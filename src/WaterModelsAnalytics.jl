@@ -16,8 +16,7 @@ module WaterModelsAnalytics
     using Printf
 
     import Plots
-
-    # using PyPlot
+    import DataFrames
 
     # Python imports.
     import PyCall
@@ -33,7 +32,6 @@ module WaterModelsAnalytics
         copy!(pgv, PyCall.pyimport("pygraphviz"))
         copy!(wntr, PyCall.pyimport("wntr"))
         copy!(wntrctrls, PyCall.pyimport("wntr.network.controls"))
-
 
 
 
@@ -70,9 +68,16 @@ module WaterModelsAnalytics
     export colorbar
     export write_visualization
 
-
     export simulate
-    export validate
-    export compare_tank_head
+    export get_node_dataframe
+    export get_tank_dataframe
+    export get_link_dataframe
+    export get_pipe_dataframe
+    export get_short_pipe_dataframe
+    export get_valve_dataframe
+    export get_pump_dataframe
+
+    # export compare_tank_head
+    export compare_tank_level
 
 end
