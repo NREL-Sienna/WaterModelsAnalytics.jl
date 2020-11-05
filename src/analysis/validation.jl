@@ -33,7 +33,7 @@ function get_node_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, node_
     pressure_watermodels = Array{Float64,1}(undef,num_time_step)
     
     for t in 1:num_time_step
-        elevation[t] = wntr_data.nodes._data[node_name].elevation
+        elevation[t] = wm_data["nw"][string(t)]["node"][node_id]["elevation"]
         head_wntr[t] = wntr_simulation.node["head"][node_name].values[t]
         head_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][node_id]["h"]
         pressure_wntr[t] = wntr_simulation.node["pressure"][node_name].values[t]
