@@ -181,9 +181,6 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
 
     # WNTR simulation 
     wns = wntr.sim.EpanetSimulator(wn)
-    wnres = wns.run_sim(file_prefix=string(rand(Int,1)[1]))
-
-    println("----- WNTR Simulation Completed -----")
+    wnres = wns.run_sim()
     return wn,wnres
-
 end 

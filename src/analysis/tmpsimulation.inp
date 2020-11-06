@@ -1,0 +1,323 @@
+; Filename: /Users/yangliu/.julia/packages/WaterModels/bG4KT/examples/data/epanet/van_zyl.inp
+; WNTR: 0.3.0
+; Created: 2020-11-05 20:56:49
+[TITLE]
+van Zyl (2004) network, modified by Byron Tasseff
+
+[JUNCTIONS]
+;ID                      Elevation       Demand Pattern                 
+ n1                                10               0                            ;
+ n2                                10               0                            ;
+ n3                                75               0                            ;
+ n6                                30             100 pattern24                  ;
+ n5                                30              50 pattern24                  ;
+ n12                              100               0                            ;
+ n13                              100               0                            ;
+ n10                              100               0                            ;
+ n11                              100               0                            ;
+ n361                             100               0                            ;
+ n365                             100               0                            ;
+ n362                             100               0                            ;
+ n364                             100               0                            ;
+ an16                              85               0                            ;
+ an15                              80               0                            ;
+
+[RESERVOIRS]
+;ID                                   Head                  Pattern
+ r1                                20                            ;
+
+[TANKS]
+;ID                              Elevation           Init Level            Min Level            Max Level             Diameter           Min Volume Volume Curve         Overflow            
+ t5                                80 1.4210854715e-14               0               5              25               0                                             ;
+ t6                                85               0               0              10              20               0                                             ;
+
+[PIPES]
+;ID                   Node1                Node2                              Length             Diameter            Roughness           Minor Loss               Status
+ p1                   r1                   n1                                 1            1000             100               0                 Open   ;
+ p2                   n2                   n3                              2600             450             100               0                 Open   ;
+ p7                   n6                   n5                                 1             200             100               0                 Open   ;
+ p12                  n1                   n12                                1            1000             100               0                 Open   ;
+ p10                  n1                   n10                                1            1000             100               0                 Open   ;
+ p11                  n11                  n2                                 1            1000             100               0                 Open   ;
+ p13                  n13                  n2                                 1            1000             100               0                 Open   ;
+ p361                 n361                 n362                               1            1000             100               0                 Open   ;
+ p364                 n364                 n365                               1            1000             100               0                 Open   ;
+ p18                  n3                   n361                               1            1000             100               0                 Open   ;
+ p19                  n361                 n365                               1            1000             100               0                   CV   ;
+ al17                 an16                 t6                             0.001            1000             100               0                 Open   ;
+ p4                   n365                 an16                            2000             350             100               0                 Open   ;
+ p6                   an16                 n6                              1100             300             100               0                 Open   ;
+ al16                 an15                 t5                             0.001            1000             100               0                 Open   ;
+ p5                   an15                 n5                               500             300             100               0                 Open   ;
+ p3                   n3                   an15                            1000             350             100               0                 Open   ;
+
+[PUMPS]
+;ID                   Node1                Node2                Properties          
+ pmp1                 n10                  n11                  HEAD     1                      ;
+ pmp2                 n12                  n13                  HEAD     1                      ;
+ pmp6                 n362                 n364                 HEAD     6                      ;
+
+[VALVES]
+;ID                   Node1                Node2                            Diameter Type              Setting           Minor Loss
+
+[TAGS]
+;type      name       tag       
+
+[DEMANDS]
+;ID        Demand     Pattern   
+
+[STATUS]
+;ID        Setting   
+[PATTERNS]
+;ID        Multipliers
+
+pattern24 0.620000 0.620000 0.670000 0.760000 0.910000 1.100000
+pattern24 1.480000 1.710000 1.480000 1.020000 0.730000 0.550000
+pattern24 0.490000 0.550000 0.730000 1.020000 1.360000 1.530000
+pattern24 1.530000 1.360000 1.100000 0.910000 0.760000 0.670000
+
+pumptariff 0.024400 0.024400 0.024400 0.024400 0.024400 0.024400
+pumptariff 0.024400 0.119400 0.119400 0.119400 0.119400 0.119400
+pumptariff 0.119400 0.119400 0.119400 0.119400 0.119400 0.119400
+pumptariff 0.119400 0.119400 0.119400 0.119400 0.119400 0.119400
+
+[CURVES]
+;ID         X-Value      Y-Value     
+;PUMP: 1
+ 1              0.000000   100.000000   ;
+ 1            120.000000    90.000000   ;
+ 1            150.000000    83.000000   ;
+
+;PUMP: 6
+ 6              0.000000   120.000000   ;
+ 6             90.000000    75.000000   ;
+ 6            150.000000     0.000000   ;
+
+;EFFICIENCY: leff
+ leff          50.000000    78.000000   ;
+ leff         107.000000    80.000000   ;
+ leff         151.000000    68.000000   ;
+ leff         200.000000    60.000000   ;
+
+
+[CONTROLS]
+Pipe al17 Open AT TIME 0
+Pipe al16 Open AT TIME 0
+Pipe al17 Open AT TIME 1
+Pipe al16 Open AT TIME 1
+Pipe al17 Open AT TIME 2
+Pipe al16 Open AT TIME 2
+Pipe al17 Open AT TIME 3
+Pipe al16 Open AT TIME 3
+Pipe al17 Open AT TIME 4
+Pipe al16 Open AT TIME 4
+Pipe al17 Open AT TIME 5
+Pipe al16 Open AT TIME 5
+Pipe al17 Closed AT TIME 6
+Pipe al16 Open AT TIME 6
+Pipe al17 Open AT TIME 7
+Pipe al16 Open AT TIME 7
+Pipe al17 Closed AT TIME 8
+Pipe al16 Closed AT TIME 8
+Pipe al17 Closed AT TIME 9
+Pipe al16 Open AT TIME 9
+Pipe al17 Open AT TIME 10
+Pipe al16 Open AT TIME 10
+Pipe al17 Open AT TIME 11
+Pipe al16 Open AT TIME 11
+Pipe al17 Closed AT TIME 12
+Pipe al16 Open AT TIME 12
+Pipe al17 Closed AT TIME 13
+Pipe al16 Open AT TIME 13
+Pipe al17 Open AT TIME 14
+Pipe al16 Open AT TIME 14
+Pipe al17 Open AT TIME 15
+Pipe al16 Closed AT TIME 15
+Pipe al17 Closed AT TIME 16
+Pipe al16 Closed AT TIME 16
+Pipe al17 Closed AT TIME 17
+Pipe al16 Closed AT TIME 17
+Pipe al17 Closed AT TIME 18
+Pipe al16 Closed AT TIME 18
+Pipe al17 Closed AT TIME 19
+Pipe al16 Closed AT TIME 19
+Pipe al17 Open AT TIME 20
+Pipe al16 Closed AT TIME 20
+Pipe al17 Open AT TIME 21
+Pipe al16 Open AT TIME 21
+Pipe al17 Open AT TIME 22
+Pipe al16 Open AT TIME 22
+Pipe al17 Closed AT TIME 23
+Pipe al16 Open AT TIME 23
+Pump pmp1 Open AT TIME 0
+Pump pmp2 Open AT TIME 0
+Pump pmp6 Open AT TIME 0
+Pump pmp1 Open AT TIME 1
+Pump pmp2 Open AT TIME 1
+Pump pmp6 Open AT TIME 1
+Pump pmp1 Open AT TIME 2
+Pump pmp2 Open AT TIME 2
+Pump pmp6 Open AT TIME 2
+Pump pmp1 Open AT TIME 3
+Pump pmp2 Open AT TIME 3
+Pump pmp6 Open AT TIME 3
+Pump pmp1 Open AT TIME 4
+Pump pmp2 Open AT TIME 4
+Pump pmp6 Open AT TIME 4
+Pump pmp1 Open AT TIME 5
+Pump pmp2 Open AT TIME 5
+Pump pmp6 Open AT TIME 5
+Pump pmp1 Open AT TIME 6
+Pump pmp2 Open AT TIME 6
+Pump pmp6 Open AT TIME 6
+Pump pmp1 Closed AT TIME 7
+Pump pmp2 Closed AT TIME 7
+Pump pmp6 Open AT TIME 7
+Pump pmp1 Closed AT TIME 8
+Pump pmp2 Open AT TIME 8
+Pump pmp6 Closed AT TIME 8
+Pump pmp1 Closed AT TIME 9
+Pump pmp2 Closed AT TIME 9
+Pump pmp6 Closed AT TIME 9
+Pump pmp1 Closed AT TIME 10
+Pump pmp2 Closed AT TIME 10
+Pump pmp6 Open AT TIME 10
+Pump pmp1 Closed AT TIME 11
+Pump pmp2 Closed AT TIME 11
+Pump pmp6 Closed AT TIME 11
+Pump pmp1 Open AT TIME 12
+Pump pmp2 Closed AT TIME 12
+Pump pmp6 Open AT TIME 12
+Pump pmp1 Closed AT TIME 13
+Pump pmp2 Closed AT TIME 13
+Pump pmp6 Closed AT TIME 13
+Pump pmp1 Closed AT TIME 14
+Pump pmp2 Closed AT TIME 14
+Pump pmp6 Closed AT TIME 14
+Pump pmp1 Closed AT TIME 15
+Pump pmp2 Open AT TIME 15
+Pump pmp6 Closed AT TIME 15
+Pump pmp1 Open AT TIME 16
+Pump pmp2 Closed AT TIME 16
+Pump pmp6 Closed AT TIME 16
+Pump pmp1 Closed AT TIME 17
+Pump pmp2 Open AT TIME 17
+Pump pmp6 Closed AT TIME 17
+Pump pmp1 Open AT TIME 18
+Pump pmp2 Closed AT TIME 18
+Pump pmp6 Closed AT TIME 18
+Pump pmp1 Open AT TIME 19
+Pump pmp2 Closed AT TIME 19
+Pump pmp6 Closed AT TIME 19
+Pump pmp1 Closed AT TIME 20
+Pump pmp2 Open AT TIME 20
+Pump pmp6 Closed AT TIME 20
+Pump pmp1 Open AT TIME 21
+Pump pmp2 Closed AT TIME 21
+Pump pmp6 Open AT TIME 21
+Pump pmp1 Closed AT TIME 22
+Pump pmp2 Closed AT TIME 22
+Pump pmp6 Closed AT TIME 22
+Pump pmp1 Closed AT TIME 23
+Pump pmp2 Closed AT TIME 23
+Pump pmp6 Open AT TIME 23
+
+[RULES]
+
+[ENERGY]
+GLOBAL EFFICIENCY      85.0000
+GLOBAL PRICE           0.0000
+DEMAND CHARGE          0.0000
+PUMP pmp1       EFFIC   leff
+PUMP pmp1       PRICE   1.0000
+PUMP pmp1       PATTERN pumptariff
+PUMP pmp2       EFFIC   leff
+PUMP pmp2       PRICE   1.0000
+PUMP pmp2       PATTERN pumptariff
+PUMP pmp6       PRICE   1.0000
+PUMP pmp6       PATTERN pumptariff
+
+[EMITTERS]
+;ID        Flow coefficient
+
+[QUALITY]
+
+[SOURCES]
+;Node      Type       Quality    Pattern   
+
+[REACTIONS]
+;Type           Pipe/Tank               Coefficient
+
+ ORDER BULK 1
+ ORDER TANK 1
+ ORDER WALL 1
+ GLOBAL BULK 0.0000    
+ GLOBAL WALL 0.0000    
+
+[MIXING]
+;Tank ID             Model Fraction
+
+[TIMES]
+DURATION             24:00:00
+HYDRAULIC TIMESTEP   01:00:00
+QUALITY TIMESTEP     00:05:00
+PATTERN TIMESTEP     01:00:00
+PATTERN START        00:00:00
+REPORT TIMESTEP      01:00:00
+REPORT START         00:00:00
+START CLOCKTIME      00:00:00 AM
+RULE TIMESTEP        00:06:00
+STATISTIC            NONE      
+
+[REPORT]
+STATUS     YES
+SUMMARY    NO
+PAGE       0
+
+[OPTIONS]
+UNITS                LPS                 
+HEADLOSS             H-W                 
+SPECIFIC GRAVITY     1
+VISCOSITY            1
+TRIALS               40
+ACCURACY             1e-05
+CHECKFREQ            2
+MAXCHECK             10
+UNBALANCED           CONTINUE 10
+DEMAND MULTIPLIER    1
+DEMAND MODEL         DDA
+EMITTER EXPONENT     0.5
+QUALITY              NONE                
+DIFFUSIVITY          1
+TOLERANCE            0.01
+
+[COORDINATES]
+;Node      X-Coord    Y-Coord   
+n1                  0.000000000          0.000000000
+n2                  0.000000000          0.000000000
+n3                  0.000000000          0.000000000
+n6                  0.000000000          0.000000000
+n5                  0.000000000          0.000000000
+n12                 0.000000000          0.000000000
+n13                 0.000000000          0.000000000
+n10                 0.000000000          0.000000000
+n11                 0.000000000          0.000000000
+n361                0.000000000          0.000000000
+n365                0.000000000          0.000000000
+n362                0.000000000          0.000000000
+n364                0.000000000          0.000000000
+r1                  0.000000000          0.000000000
+t5                  0.000000000          0.000000000
+t6                  0.000000000          0.000000000
+an16                0.000000000          0.000000000
+an15                0.000000000          0.000000000
+
+[VERTICES]
+;Link      X-Coord    Y-Coord   
+
+[LABELS]
+
+[BACKDROP]
+UNITS    NONE
+
+[END]
