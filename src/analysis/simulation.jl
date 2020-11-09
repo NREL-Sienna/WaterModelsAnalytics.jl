@@ -4,6 +4,8 @@ Perform EPANET hydraulic simulation (via WNTR) using controls in WM
 wm_solution. 
 """
 
+using Random
+
 function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
                      inpfilepath::String)
 
@@ -181,9 +183,11 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
 
     # WNTR simulation 
     wns = wntr.sim.EpanetSimulator(wn)
-    wnres = wns.run_sim(file_prefix=string(rand(Int,1)[1]))
+    path_to_tmp_folder = string(@__DIR__)*"/"*Random.randstring(5)
+    tmp_file = Random.randstring(5)
+    mkdir(path_to_tmp_folder)
+    wnres = wns.run_sim(path_to_tmp_folder*"/"*tmp_file)
+    rm(path_to_tmp_folder,recursive=true)
 
-    println("----- WNTR Simulation Completed -----")
     return wn,wnres
-
 end 
