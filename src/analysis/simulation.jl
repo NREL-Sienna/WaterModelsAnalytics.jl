@@ -181,6 +181,9 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
 
     # WNTR simulation 
     wns = wntr.sim.EpanetSimulator(wn)
-    wnres = wns.run_sim()
-    return wn,wnres
+    path_to_tmp_folder = mktempdir()
+    wnres = wns.run_sim(joinpath(path_to_tmp_folder, "epanetfile"))
+    rm(path_to_tmp_folder, recursive = true)
+
+    return wn, wnres
 end 

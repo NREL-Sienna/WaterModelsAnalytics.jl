@@ -1,4 +1,5 @@
 # WaterModelsAnalytics.jl
+<a href="https://travis-ci.org/NREL-SIIP/WaterModelsAnalytics.jl"><img src="https://travis-ci.org/NREL-SIIP/WaterModelsAnalytics.jl.svg?branch=master" align="top" alt="Development Build Status"></a> <a href="https://codecov.io/gh/NREL-SIIP/WaterModelsAnalytics.jl"><img align="top" src="https://codecov.io/gh/NREL-SIIP/WaterModelsAnalytics.jl/branch/master/graph/badge.svg" alt="Code Coverage Status"></a>
 
 WaterModelsAnalytics.jl is a Julia package to to support WaterModels.jl (and
 possibly WaterSystems.jl) with network graph visualizations (and possibly other

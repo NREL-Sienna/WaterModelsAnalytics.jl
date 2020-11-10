@@ -10,7 +10,7 @@
 Build networkx graph object from a WaterModels network dictionary parsed from an EPANET file.
 """
 function build_graph(data::Dict{String,Any},
-                     solution::Union{Nothing, Dict{String,Any}}=nothing)
+                     solution::Union{Nothing, Dict{String,Any}} = nothing)
     # presumes input is data dict from WaterModels.parse_file()
 
     # TODO:
@@ -30,7 +30,7 @@ function build_graph(data::Dict{String,Any},
     add_links!(G, data["valve"], "valve") 
 
     # if solution dict provided
-    if !isnothing(solution)
+    if solution != nothing
         add_solution!(G, data, solution)
     end
     
