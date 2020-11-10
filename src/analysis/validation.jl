@@ -320,7 +320,7 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
             println("No pump efficiency provided, 75% is used")
             eff = 0.75
         end
-        power = 9.81*1000*dh*q/eff # Watt
+        power = _WM._GRAVITY * _WM._DENSITY * dh * q / eff # Watt
         return power
     end
 
