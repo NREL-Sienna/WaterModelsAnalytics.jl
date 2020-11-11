@@ -6,14 +6,16 @@ Perform EPANET hydraulic simulation (via WNTR) and compute timeseries of flows a
 using DataFrames
 
 
-function _get_wntr_node_attribute(wntr_simulation, node_name::String, attribute::String)
-    values = PyCall.getproperty(wntr_simulation.node[attribute], node_name).values[1:end-1]
+function _get_wntr_node_attribute(wntr_simulation, node_name::AbstractString,
+                                  attribute::String)
+    values = wntr_simulation.node[attribute][node_name].values[1:end-1]
     return Float64.(values) # Convert to 64-bit floating point array.
 end
 
 
-function _get_wntr_link_attribute(wntr_simulation, link_name::String, attribute::String)
-    values = PyCall.getproperty(wntr_simulation.link[attribute], link_name).values[1:end-1]
+function _get_wntr_link_attribute(wntr_simulation, link_name::AbstractString,
+                                  attribute::String)
+    values = wntr_simulation.link[attribute][link_name].values[1:end-1]
     return Float64.(values) # Convert to 64-bit floating point array.
 end
 
@@ -70,7 +72,7 @@ function get_tank_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, tank_
     volume_watermodels = Array{Float64,1}(undef,num_time_step)
     level_wntr = Array{Float64,1}(undef,num_time_step)
     level_watermodels = Array{Float64,1}(undef,num_time_step)
-
+    
     volume_wntr = _get_wntr_node_attribute(wntr_simulation, tank_name, "pressure") .* (0.25 * pi * diameter^2)
     level_wntr = _get_wntr_node_attribute(wntr_simulation, tank_name, "pressure")
 
