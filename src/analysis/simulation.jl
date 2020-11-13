@@ -22,7 +22,6 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         end
     end
 
-
     # store tank names in a set
     tank_set = Set()
     tank_index_dict = Dict{String,String}()     # index designated for tanks 
@@ -35,8 +34,8 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     end
 
     # store artificial links and nodes connected to tanks in a Dict
-    arti_link_dict = Dict{String,String}()
-    arti_node_dict = Dict{String,String}()
+    arti_tank_link_dict = Dict{String,String}()
+    arti_tank_node_dict = Dict{String,String}()
     tank_link_dict = Dict{String,Any}()
 
     for tank_name in tank_set
@@ -51,17 +50,22 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
 
         if wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2] in tank_set
             if node_to_index != tank_node_id_dict[wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]]    # we are looking for the artificial node, NOT the tank node
-                tank_name = wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]
-                arti_link_dict[tank_name] = "al"*artificial_link    # "al" is a prefix that stands for "artificial link"
-                arti_node_dict[tank_name] = "an"*node_to_index      # "an" is a prefix that stands for "artificial node"
+                if node_fr_index == tank_node_id_dict[wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]]
+                    tank_name = wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]
+                    arti_tank_link_dict[tank_name] = "atl"*artificial_link    # "atl" is a prefix that stands for "artificial link"
+                    arti_tank_node_dict[tank_name] = "atn"*node_to_index      # "atn" is a prefix that stands for "artificial node"
+                end
             end
         end
 
         if wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2] in tank_set
             if node_fr_index != tank_node_id_dict[wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]]    # we are looking for the artificial node, NOT the tank node
-                tank_name = wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]
-                arti_link_dict[tank_name] = "al"*artificial_link    # "al" is a prefix that stands for "artificial link"
-                arti_node_dict[tank_name] = "an"*node_fr_index      # "an" is a prefix that stands for "artificial node"
+                if node_to_index == tank_node_id_dict[wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]]
+
+                    tank_name = wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]
+                    arti_tank_link_dict[tank_name] = "atl"*artificial_link    # "atl" is a prefix that stands for "artificial link"
+                    arti_tank_node_dict[tank_name] = "atn"*node_fr_index      # "atn" is a prefix that stands for "artificial node"
+                end
             end
         end
     end
@@ -92,8 +96,8 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         wn.nodes._data[tank_name].init_level = wm_solution["solution"]["nw"]["1"]["node"][tank_node_id_dict[tank_name]]["p"]
 
         # add artificial node and link
-        wn.add_junction(arti_node_dict[tank_name],base_demand=0,elevation=tank_elevation)  
-        wn.add_pipe(arti_link_dict[tank_name],start_node_name=arti_node_dict[tank_name],end_node_name=tank_name,   
+        wn.add_junction(arti_tank_node_dict[tank_name],base_demand=0,elevation=tank_elevation)  
+        wn.add_pipe(arti_tank_link_dict[tank_name],start_node_name=arti_tank_node_dict[tank_name],end_node_name=tank_name,   
         length=1e-3,diameter=1,roughness=100,minor_loss=0,status="Open",check_valve_flag=false)
 
         # save information of tank links, re-connect them to artificial nodes
@@ -111,20 +115,62 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
             else
                 status = "Closed"
             end
-            cv = wn.links._data[link_name].cv 
+            cv_flag = wn.links._data[link_name].cv 
 
             # remove link
             wn.remove_link(link_name,with_control=true,force=true)
 
             # add the link back and connect to the artificial node
             if start_node_name == tank_name
-                wn.add_pipe(link_name,start_node_name=arti_node_dict[tank_name],end_node_name=end_node_name,
-                    length=pipe_length,diameter=diameter,roughness=roughness,minor_loss=minor_loss,status=status,check_valve_flag=cv)
+                wn.add_pipe(link_name,start_node_name=arti_tank_node_dict[tank_name],end_node_name=end_node_name,
+                    length=pipe_length,diameter=diameter,roughness=roughness,minor_loss=minor_loss,status=status,check_valve_flag=cv_flag)
             else
-                wn.add_pipe(link_name,start_node_name=start_node_name,end_node_name=arti_node_dict[tank_name],
-                    length=pipe_length,diameter=diameter,roughness=roughness,minor_loss=minor_loss,status=status,check_valve_flag=cv)
+                wn.add_pipe(link_name,start_node_name=start_node_name,end_node_name=arti_tank_node_dict[tank_name],
+                    length=pipe_length,diameter=diameter,roughness=roughness,minor_loss=minor_loss,status=status,check_valve_flag=cv_flag)
             end
         end
+    end
+
+    # retrieve added artificial nodes and links for check valves 
+    cv_set = Set()
+    arti_cv_link_dict = Dict{String,String}()    # added artificial link for check valve
+    arti_cv_node_dict = Dict{String,String}()    # added artificial node for check valve
+    for (key,valve) in wm_data["nw"]["1"]["valve"]
+        if wm_data["nw"]["1"]["valve"][key]["source_id"][1] == "pipe" # this condition finds check valves 
+            cv_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
+            push!(cv_set,cv_name)
+            arti_cv_link_dict[cv_name] = "avl"*cv_name
+            arti_cv_node_dict[cv_name] = "avn"*string(wm_data["nw"]["1"]["valve"][key]["node_to"])
+        end
+    end
+    
+    # add artificial nodes and links associatd with check valves in wn 
+    for cv_name in cv_set
+        cv_elevation = wn.nodes._data[wn.links._data[cv_name].start_node_name].elevation    # elevation of the start node
+        # add artificial node and link
+        wn.add_junction(arti_cv_node_dict[cv_name],base_demand=0,elevation=cv_elevation)  
+        wn.add_pipe(arti_cv_link_dict[cv_name],start_node_name=wn.links._data[cv_name].start_node_name,end_node_name=arti_cv_node_dict[cv_name],   
+        length=1e-3,diameter=1,roughness=100,minor_loss=0,status="Open",check_valve_flag=true)
+        # save link info
+        start_node_name = wn.links._data[cv_name].start_node_name
+        end_node_name = wn.links._data[cv_name].end_node_name
+        cv_length = wn.links._data[cv_name].length
+        diameter = wn.links._data[cv_name].diameter
+        roughness = wn.links._data[cv_name].roughness
+        minor_loss = wn.links._data[cv_name].minor_loss
+        status = wn.links._data[cv_name].status
+        if status == 1
+            status = "Open"
+        else
+            status = "Closed"
+        end
+        cv_flag = false # now we already have a new zero-length CV, this pipe doesn't have to be cv again
+
+        # remove link
+        wn.remove_link(cv_name,with_control=true,force=true)
+        # add the link back and connect to the artificial node
+        wn.add_pipe(cv_name,start_node_name=arti_cv_node_dict[cv_name],end_node_name=end_node_name,
+            length=cv_length,diameter=diameter,roughness=roughness,minor_loss=minor_loss,status=status,check_valve_flag=cv_flag)
     end
 
     # remove old controls
@@ -133,13 +179,8 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     for i = 1:length(old_controls)
         current_control = wn.get_control(old_controls[i])
         control_target = string(current_control._then_actions[1]._target_obj._link_name)
-        if !(control_target in pump_set)   # only remove old pump controls
-            index_to_remove += 1
-        else
-            wn.remove_control(wn.control_name_list[index_to_remove]) # remove one by one
-        end
+        wn.remove_control(wn.control_name_list[index_to_remove]) # remove one by one
     end
-
 
     # retrieve the duration of a time step of the number of time steps
     num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
@@ -153,7 +194,7 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
             shutoff_valve_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
             if shutoff_valve_name in shutoff_valve_set
                 # the shutoff_valve always include a added prefix in its name in WNTR
-                shutoff_valve_name = "al"*shutoff_valve_name    
+                shutoff_valve_name = "atl"*shutoff_valve_name    
                 shutoff_valve_obj = wn.get_link(shutoff_valve_name)
                 shutoff_valve_status = round(shutoff_valve_dict["status"])
                 act = wntrctrls.ControlAction(shutoff_valve_obj,"status",shutoff_valve_status)
