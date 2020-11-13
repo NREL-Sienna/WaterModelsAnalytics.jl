@@ -24,21 +24,14 @@ end
 function get_node_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, node_id)
     num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                            # length per time step (hour)
-    node_name = string(wm_data["nw"]["1"]["node"][node_id]["source_id"][2])
     
-    #  if this is an artificial node added next to a tank, the name should include a prefix
-    is_artificial = false
-    if wm_data["nw"]["1"]["node"][node_id]["source_id"][1] == "tank"
-        is_artificial = true
-        for (key,tank) in wm_data["nw"]["1"]["tank"]
-            if node_id == string(wm_data["nw"]["1"]["tank"][key]["node"])   # this condition means that the node is the real tank, not the aritificial node next to it
-                is_artificial = false
-                break
-            end
-        end
-    end
-    if is_artificial == true
-        node_name = "an"*node_id
+    # check if this node is an artificial one and get node name
+    if "atn"*string(node_id) in keys(wntr_data.nodes._data)
+        node_name = "atn"*string(node_id)
+    elseif "avn"*string(node_id) in keys(wntr_data.nodes._data)
+        node_name = "avn"*string(node_id)
+    else
+        node_name = string(wm_data["nw"]["1"]["node"][node_id]["source_id"][2])
     end
 
     head_wntr = _get_wntr_node_attribute(wntr_simulation, node_name, "head")
@@ -114,8 +107,14 @@ function get_link_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, link_
     # if this is a shutoff valve next to a tank, link_name should include prefix
     for (key,tank) in wm_data["nw"]["1"]["tank"]
         if end_node_id == wm_data["nw"]["1"]["tank"][key]["node"]   # if a link's end node is a tank, this link MUST be an added shutoff valve
-            link_name = "al" * link_name
+            link_name = "atl" * link_name
             break
+        end
+    end
+    # similarly, if this is a zero-length check valve (artificial), link_name should include prefix
+    if link_type == "valve"
+        if wm_data["nw"]["1"][link_type][link_id]["source_id"][1] == "pipe"
+            link_name = "avl" * link_name
         end
     end
 
@@ -214,12 +213,17 @@ function get_valve_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,valve
     start_node_id = wm_data["nw"]["1"]["valve"][valve_id]["node_fr"]
     end_node_id = wm_data["nw"]["1"]["valve"][valve_id]["node_to"]
 
-    # if this is a shutoff valve next to a tank, valve_name should include prefix
+    # if this is a shutoff valve next to a tank, link_name should include prefix
     for (key,tank) in wm_data["nw"]["1"]["tank"]
         if end_node_id == wm_data["nw"]["1"]["tank"][key]["node"]   # if a link's end node is a tank, this link MUST be an added shutoff valve
-            valve_name = "al"*valve_name
+            valve_name = "atl" * valve_name
             break
         end
+    end
+    # similarly, if this is a zero-length check valve (artificial), link_name should include prefix
+  
+    if wm_data["nw"]["1"]["valve"][valve_id]["source_id"][1] == "pipe"
+        valve_name = "avl" * valve_name
     end
 
     start_node_name = wntr_data.links._data[valve_name].start_node_name
