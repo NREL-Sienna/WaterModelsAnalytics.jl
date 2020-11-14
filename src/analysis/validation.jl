@@ -3,19 +3,15 @@
 Perform EPANET hydraulic simulation (via WNTR) and compute timeseries of flows and heads
 """
 
-using DataFrames
 
-
-function _get_wntr_node_attribute(wntr_simulation, node_name::AbstractString,
-                                  attribute::String)
-    values = wntr_simulation.node[attribute][node_name].values[1:end-1]
+function _get_wntr_node_attribute(wntr_simulation, name::AbstractString, attribute::String)
+    values = PyCall.getproperty(wntr_simulation.node[attribute], name).values[1:end-1]
     return Float64.(values) # Convert to 64-bit floating point array.
 end
 
 
-function _get_wntr_link_attribute(wntr_simulation, link_name::AbstractString,
-                                  attribute::String)
-    values = wntr_simulation.link[attribute][link_name].values[1:end-1]
+function _get_wntr_link_attribute(wntr_simulation, name::AbstractString, attribute::String)
+    values = PyCall.getproperty(wntr_simulation.link[attribute], name).values[1:end-1]
     return Float64.(values) # Convert to 64-bit floating point array.
 end
 
@@ -47,7 +43,7 @@ function get_node_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, node_
         pressure_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][node_id]["p"]
     end
 
-    node_df = DataFrame(time = 1:time_step:time_step*num_time_step, elevation = elevation, 
+    node_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, elevation = elevation, 
         head_wntr = head_wntr, head_watermodels = head_watermodels,
         pressure_wntr = pressure_wntr, pressure_watermodels = pressure_watermodels)
 
@@ -74,7 +70,7 @@ function get_tank_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, tank_
         level_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][tank_node_id]["p"]
     end
 
-    tank_df = DataFrame(time = 1:time_step:time_step*num_time_step, volume_wntr = volume_wntr, volume_watermodels = volume_watermodels, 
+    tank_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, volume_wntr = volume_wntr, volume_watermodels = volume_watermodels, 
         level_wntr = level_wntr, level_watermodels = level_watermodels)
 
     return tank_df
@@ -133,7 +129,7 @@ function get_link_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, link_
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
 
-    link_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+    link_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
         head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return link_df
@@ -164,7 +160,7 @@ function get_pipe_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pipe_i
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
     
-    pipe_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+    pipe_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
         head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return pipe_df
@@ -195,7 +191,7 @@ function get_short_pipe_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
     
-    short_pipe_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+    short_pipe_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
         head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return short_pipe_df
@@ -241,7 +237,7 @@ function get_valve_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,valve
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
 
-    valve_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+    valve_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
         head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return valve_df
@@ -274,7 +270,7 @@ function get_regulator_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,r
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][string(start_node_id)]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][string(end_node_id)]["h"]
     end
 
-    regulator_df = DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
+    regulator_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
         head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return regulator_df
@@ -348,7 +344,7 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
         cost_watermodels[t] = power_watermodels[t]*time_step*energy_price
     end
 
-    pump_df = DataFrame(time = 1:time_step:time_step*num_time_step, status_wntr = status_wntr, status_watermodels = status_watermodels, 
+    pump_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, status_wntr = status_wntr, status_watermodels = status_watermodels, 
         flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
         head_gain_wntr = head_gain_wntr, head_gain_watermodels = head_gain_watermodels,
         power_wntr = power_wntr, power_watermodels = power_watermodels,
