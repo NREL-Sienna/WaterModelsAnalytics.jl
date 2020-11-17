@@ -19,10 +19,10 @@ function plot_pumps(pumps::Dict{String,Any}; screen=true, savepath=nothing)
         Gbep = pump["g_bep"]
         Pbep = pump["P_bep"] # inconsistent capitilization...
         etabep = 1000.0 * 9.80665 * inv(Pbep) * Gbep * Qbep
-        head = _WM.array_from_tuples(pump["head_curve"])
+        head = array_from_tuples(pump["head_curve"])
         eff_is_curve = haskey(pump, "efficiency_curve")
         if eff_is_curve
-            eff = _WM.array_from_tuples(pump["efficiency_curve"])
+            eff = array_from_tuples(pump["efficiency_curve"])
             qmin = max(head[1,1], eff[1,1])/Qbep
             qmax = min(head[end,1], eff[end,1])/Qbep
         else

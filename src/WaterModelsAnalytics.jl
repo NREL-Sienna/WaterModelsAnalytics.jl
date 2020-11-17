@@ -62,10 +62,12 @@ module WaterModelsAnalytics
         Memento.config!(Memento.getlogger("WaterModelsAnalytics"), level)
     end
 
-    include("graph/common.jl")
+    include("analysis/utility.jl")
     include("analysis/simulation.jl")
     include("analysis/validation.jl")
     include("analysis/visualization.jl")
+    include("analysis/pump_bep.jl")
+    include("graph/common.jl")
     include("plots/pumps.jl")
 
     export build_graph
@@ -85,6 +87,7 @@ module WaterModelsAnalytics
     # export compare_tank_head
     export compare_tank_level
 
+    export calc_pump_bep!
     export plot_pumps
 
 end
