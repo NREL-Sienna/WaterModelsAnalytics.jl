@@ -51,9 +51,9 @@ function calc_pump_bep!(data::Dict{String,<:Any})
         end
         
         # Power at the BEP (1000 and 9.80665 are density and gravity).
-        P_bep = _WM._DENSITY * _WM._GRAVITY * inv(eta_bep) * g_bep * q_bep
+        p_bep = _WM._DENSITY * _WM._GRAVITY * inv(eta_bep) * g_bep * q_bep
 
         # Add BEP values to the pump dictionary.
-        pump["q_bep"], pump["g_bep"], pump["P_bep"] = q_bep, g_bep, P_bep
+        pump["q_bep"], pump["g_bep"], pump["p_bep"] = q_bep, g_bep, p_bep
     end
 end

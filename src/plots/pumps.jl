@@ -17,8 +17,8 @@ function plot_pumps(pumps::Dict{String,Any}; screen=true, savepath=nothing)
     for (key,pump) in pumps
         Qbep = pump["q_bep"]
         Gbep = pump["g_bep"]
-        Pbep = pump["P_bep"] # inconsistent capitilization...
-        etabep = 1000.0 * 9.80665 * inv(Pbep) * Gbep * Qbep
+        Pbep = pump["p_bep"] 
+        etabep = _WM._DENSITY * _WM._GRAVITY * inv(Pbep) * Gbep * Qbep
         head = array_from_tuples(pump["head_curve"])
         eff_is_curve = haskey(pump, "efficiency_curve")
         if eff_is_curve
@@ -52,20 +52,23 @@ function plot_pumps(pumps::Dict{String,Any}; screen=true, savepath=nothing)
             pow = headitp(q).*q./effitp(q)
         end
 
-        Plots.plot!(p1, head[:,1]/Qbep, head[:,2]/Gbep, label=""; plotargs...)
+        # plot head curve
+        Plots.plot!(p1, head[:,1]/Qbep, head[:,2]/Gbep; plotargs...)
+        #plot efficiency curve
         if eff_is_curve
             Plots.plot!(p2, eff[:,1]/Qbep, eff[:,2]/etabep, label=pump["name"]; plotargs...)
         else
             Plots.plot!(p2, (1, 1), label=pump["name"]; plotargs...)
         end
-        Plots.plot!(p3, q, pow, label="", ylims=(0,2); plotargs...)
+        # plot power curve
+        Plots.plot!(p3, q, pow, ylims=(0,2); plotargs...)
     end
-     # use legend=:none ?? then will not need empty label keys above
-    Plots.plot!(p1, Qhat, Ghat, lc=:black, lw=2, label="", ylabel=L"\hat{G}")
+    # plot normalized curves
+    Plots.plot!(p1, Qhat, Ghat, lc=:black, lw=2, label="", ylabel=L"\hat{G}", legend=:none)
     Plots.plot!(p2, Qhat, etahat, lc=:black, lw=2, label="", ylabel=L"\hat{\eta}",
                 legend=:bottom)
     Plots.plot!(p3, Qhat, Phat, lc=:black, lw=2, label="", xlabel=L"\hat{Q}",
-                ylabel=L"\hat{P}")
+                ylabel=L"\hat{P}", legend=:none)
     width = 400
     height = width*4/6*3
     pfig = Plots.plot(p1, p2, p3, size=(width,height), layout=(3,1));
