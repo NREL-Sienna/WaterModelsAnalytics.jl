@@ -8,8 +8,10 @@ Compare the fluctuations in tank levels calculated from WaterModels and WNTR
 """
 function compare_tank_level(wm_data,wm_solution,wntr_data,wntr_simulation, outfilepath::String, tank_id)
     num_time_step = length(wm_solution["solution"]["nw"])    # number of time steps 
-    tank_name = wm_data["nw"]["1"]["tank"][tank_id]["source_id"][2]
+
     tank_node_id = string(wm_data["nw"]["1"]["tank"][tank_id]["node"])
+    tank_name = tank_node_id
+    
     diameter = wntr_data.nodes._data[tank_name].diameter
     level_wntr = Array{Float64,1}(undef,num_time_step)
     level_watermodels = Array{Float64,1}(undef,num_time_step)

@@ -78,7 +78,6 @@ module WaterModelsAnalytics
     export simulate
     export get_node_dataframe
     export get_tank_dataframe
-    export get_link_dataframe
     export get_pipe_dataframe
     export get_short_pipe_dataframe
     export get_valve_dataframe
