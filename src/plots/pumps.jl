@@ -3,7 +3,8 @@ Plot the normalized pump curves for the pumps in a network. Displays the plot on
 by default. Use keywords `screen` and `savepath` to control whether to display and/or save
 to file.
 """
-function plot_pumps(pumps::Dict{String,Any}; screen=true, savepath=nothing)
+function plot_pumps(pumps::Dict{String,Any}; normalized=true, screen=true, reuse=true,
+                    savepath=nothing)
     m = 50
     Qhat = Array(range(0.0, 2.0, length=m))
     etahat = -Qhat.^2 .+ 2*Qhat
@@ -14,7 +15,7 @@ function plot_pumps(pumps::Dict{String,Any}; screen=true, savepath=nothing)
     p2 = Plots.plot()
     p3 = Plots.plot()
     plotargs = Dict(:lt=>:scatter, :shape=>:circle, :ms=>6, :msc=>:auto)
-    for (key,pump) in pumps
+    for (i,(key,pump)) in enumerate(pumps)
         Qbep = pump["q_bep"]
         Gbep = pump["g_bep"]
         Pbep = pump["p_bep"] 
@@ -53,25 +54,56 @@ function plot_pumps(pumps::Dict{String,Any}; screen=true, savepath=nothing)
         end
 
         # plot head curve
-        Plots.plot!(p1, head[:,1]/Qbep, head[:,2]/Gbep; plotargs...)
+        if normalized
+            Plots.plot!(p1, head[:,1]/Qbep, head[:,2]/Gbep, mc=i; plotargs...)
+        else
+            Plots.plot!(p1, head[:,1], head[:,2], mc=i; plotargs...)
+            Plots.plot!(p1, Qbep*Qhat, Gbep*Ghat, lc=i, lw=2, label="") # fit curve
+        end
         #plot efficiency curve
         if eff_is_curve
-            Plots.plot!(p2, eff[:,1]/Qbep, eff[:,2]/etabep, label=pump["name"]; plotargs...)
-        else
-            Plots.plot!(p2, (1, 1), label=pump["name"]; plotargs...)
+            if normalized
+                Plots.plot!(p2, eff[:,1]/Qbep, eff[:,2]/etabep, label=pump["name"], mc=i;
+                            plotargs...)
+            else
+                Plots.plot!(p2, eff[:,1], eff[:,2], label=pump["name"], mc=i; plotargs...)
+            end
+        else # plot the single point
+            if normalized
+                Plots.plot!(p2, (1, 1), label=pump["name"], mc=i; plotargs...)
+            else
+                Plots.plot!(p2, (Qbep, etabep), label=pump["name"], mc=i; plotargs...)
+            end
+        end
+        if !normalized # fit curve
+            Plots.plot!(p2, Qbep*Qhat, etabep*etahat, lc=i, lw=2, label="")
         end
         # plot power curve
-        Plots.plot!(p3, q, pow, ylims=(0,2); plotargs...)
+        if normalized
+            Plots.plot!(p3, q, pow, ylims=(0,2), mc=i; plotargs...)
+        else
+            Plots.plot!(p3, q*Qbep, pow*Pbep, mc=i; plotargs...)
+            Plots.plot!(p3, Qbep*Qhat, Pbep*Phat, lc=i, lw=2, label="") # fit curve
+        end
     end
-    # plot normalized curves
-    Plots.plot!(p1, Qhat, Ghat, lc=:black, lw=2, label="", ylabel=L"\hat{G}", legend=:none)
-    Plots.plot!(p2, Qhat, etahat, lc=:black, lw=2, label="", ylabel=L"\hat{\eta}",
-                legend=:bottom)
-    Plots.plot!(p3, Qhat, Phat, lc=:black, lw=2, label="", xlabel=L"\hat{Q}",
-                ylabel=L"\hat{P}", legend=:none)
+    if normalized
+        # plot normalized fit curves and add axes labels and legend
+        Plots.plot!(p1, Qhat, Ghat, lc=:black, lw=2, label="", ylabel=L"\hat{G}",
+                    legend=:none)
+        Plots.plot!(p2, Qhat, etahat, lc=:black, lw=2, label="", ylabel=L"\hat{\eta}",
+                    legend=:bottom)
+        Plots.plot!(p3, Qhat, Phat, lc=:black, lw=2, label="", xlabel=L"\hat{Q}",
+                    ylabel=L"\hat{P}", legend=:none)
+    else
+        # add axes labels and legend (not-normalized fit curves already plotted)
+        Plots.plot!(p1, ylabel=L"G", legend=:none)
+        Plots.plot!(p2, ylabel=L"\eta", legend=:bottom)
+        Plots.plot!(p3, xlabel=L"Q", ylabel=L"P", legend=:none)
+    end
+    
     width = 400
     height = width*4/6*3
-    pfig = Plots.plot(p1, p2, p3, size=(width,height), layout=(3,1));
+    pfig = Plots.plot(p1, p2, p3, size=(width,height), layout=(3,1), reuse=reuse);
     # display on the screen and/or save
     screen ? display(pfig) : nothing
     savepath != nothing ? Plots.savefig(pfig, savepath) : nothing
