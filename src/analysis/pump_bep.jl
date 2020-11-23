@@ -54,6 +54,9 @@ function calc_pump_bep!(data::Dict{String,<:Any})
         p_bep = _WM._DENSITY * _WM._GRAVITY * inv(eta_bep) * g_bep * q_bep
 
         # Add BEP values to the pump dictionary.
-        pump["q_bep"], pump["g_bep"], pump["p_bep"] = q_bep, g_bep, p_bep
+        pump["q_bep"] = q_bep
+        pump["g_bep"] = g_bep
+        pump["eta_bep"] = eta_bep
+        pump["p_bep"] = p_bep
     end
 end
