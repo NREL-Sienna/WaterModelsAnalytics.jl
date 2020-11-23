@@ -129,24 +129,27 @@ function get_valve_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,valve
     num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
     time_step = wm_data["time_step"]/3600                            # length per time step (hour)
     valve_name = "valve"*valve_id
+    status_watermodels = Array{Float64,1}(undef,num_time_step)
     flow_wntr = Array{Float64,1}(undef,num_time_step)
     flow_watermodels = Array{Float64,1}(undef,num_time_step)
     head_loss_wntr = Array{Float64,1}(undef,num_time_step)
     head_loss_watermodels = Array{Float64,1}(undef,num_time_step)
     node_fr = string(wm_data["nw"]["1"]["valve"][valve_id]["node_fr"])
     node_to = string(wm_data["nw"]["1"]["valve"][valve_id]["node_to"])
+    status_wntr = _get_wntr_link_attribute(wntr_simulation, valve_name, "status")
     flow_wntr = _get_wntr_link_attribute(wntr_simulation, valve_name, "flowrate")
     head_start_wntr = _get_wntr_node_attribute(wntr_simulation, node_fr, "head")
     head_end_wntr = _get_wntr_node_attribute(wntr_simulation, node_to, "head")
     head_loss_wntr = head_start_wntr .- head_end_wntr
 
     for t in 1:num_time_step
+        status_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["valve"][valve_id]["status"]
         flow_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["valve"][valve_id]["q"]
         head_loss_watermodels[t] = wm_solution["solution"]["nw"][string(t)]["node"][node_fr]["h"]-wm_solution["solution"]["nw"][string(t)]["node"][node_to]["h"]
     end
 
-    valve_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, 
-        head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
+    valve_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, status_wntr = status_wntr, status_watermodels = status_watermodels, 
+        flow_wntr = flow_wntr, flow_watermodels = flow_watermodels, head_loss_wntr = head_loss_wntr, head_loss_watermodels = head_loss_watermodels)
 
     return valve_df
 end
