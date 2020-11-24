@@ -146,12 +146,7 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         diameter = 1
         roughness = 100
         minor_loss = short_pipe_info["minor_loss"]
-        status = short_pipe_info["status"]
-        if status == 1
-            status = "Open"
-        else
-            status = "Closed"
-        end
+        status = "Open"
         wn.add_pipe("short_pipe"*short_pipe_id,node_fr,node_to,length=length,diameter=diameter,
                     roughness=roughness,minor_loss=minor_loss,status=status)
     end
@@ -200,20 +195,7 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     end
 
 
-
-
-
-    # remove old controls
-    old_controls = wn.control_name_list
-    index_to_remove = 1
-    for i = 1:length(old_controls)
-        current_control = wn.get_control(old_controls[i])
-        control_target = string(current_control._then_actions[1]._target_obj._link_name)
-        wn.remove_control(wn.control_name_list[index_to_remove]) # remove one by one
-    end
-
-
-    # add new shutoff valve controls 
+    # add shutoff valve controls 
     for tx in 1:num_time_step
         for (valve_id,shutoff_valve_info) in wm_solution["solution"]["nw"][string(tx)]["valve"]
             if wm_data["nw"]["1"]["valve"][valve_id]["source_id"][1] == "valve"
@@ -235,7 +217,7 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
         end
     end
 
-    # add new pump controls
+    # add pump controls
     for tx in 1:num_time_step
         for (pump_id,pump_info) in wm_solution["solution"]["nw"][string(tx)]["pump"]
             pump_name = "pump"*pump_id
