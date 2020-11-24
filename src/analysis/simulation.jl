@@ -203,7 +203,6 @@ function _set_wntr_tank_level(wntr_network::PyCall.PyObject, data::Dict{String, 
     end
 end
 
-
 function _set_wntr_valve_controls(wntr_network::PyCall.PyObject, data::Dict{String, Any}, solution::Dict{String, Any}, time_step::Float64)
     network_ids = sort([parse(Int, nw) for (nw, nw_sol) in solution["nw"]])
 
@@ -266,7 +265,6 @@ function _set_wntr_pump_controls(wntr_network::PyCall.PyObject, data::Dict{Strin
         end
     end
 end
-
 
 """
 Initialize WNTR network from a WaterModels `data` dictionary.
