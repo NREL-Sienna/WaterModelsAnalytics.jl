@@ -15,8 +15,7 @@ end
 
 
 function _populate_wntr_hydraulic_options!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
-    wntr_network.options.hydraulic.headloss = uppercase(data["head_loss"])
-    wntr_network.options.hydraulic.viscosity = _WM._VISCOSITY
+    wntr_network.options.hydraulic.headloss = uppercase(data["nw"]["1"]["head_loss"])
     wntr_network.options.hydraulic.unbalanced = "CONTINUE"
     wntr_network.options.hydraulic.unbalanced_value = 100
 end
@@ -180,16 +179,14 @@ end
 
 
 function _clear_wntr_controls(wntr_network::PyCall.PyObject)
-    for (i, control) in enumerate(wntr_network.control_name_list)
-        wntr_control = wntr_network.get_control(control)
-        wntr_control_target = string(wntr_control._then_actions[1]._target_obj._link_name)
-        wntr_network.remove_control(wntr_network.control_name_list[i])
+    for i in 1:length(wntr_network.control_name_list)
+        wntr_network.remove_control(wntr_network.control_name_list[1])
     end
 end
 
 
-function _set_wntr_valve_controls(wntr_network::PyCall.PyObject, result::Dict{String, Any}, time_step::Float64)
-    nw_solution = result["solution"]["nw"]
+function _set_wntr_valve_controls(wntr_network::PyCall.PyObject, solution::Dict{String, Any}, time_step::Float64)
+    nw_solution = solution["nw"]
     network_ids = sort([parse(Int, nw) for (nw, nw_sol) in nw_solution])
 
     for (n, nw) in enumerate(network_ids)
@@ -198,16 +195,16 @@ function _set_wntr_valve_controls(wntr_network::PyCall.PyObject, result::Dict{St
             wntr_valve = wntr_network.get_link(wntr_valve_name)
             valve_status = round(valve["status"])
 
-            nw_previous = n == 1 ? nw : string(network_ids[n - 1])
+            nw_previous = n == 1 ? string(nw) : string(network_ids[n - 1])
             valve_status_previous = round(nw_solution[nw_previous]["valve"][i]["status"])
 
             if n > 1 && valve_status == valve_status_previous
                 continue # No change in valve status, no need to add control.
             else
                 # Define control name and time metadata.
-                control_time = (n - 1) * time_step * 3600.0 # Time to apply action.
                 control_name_prefix = join(["valve_control_", string(wntr_valve_name)])
                 control_name = join([control_name_prefix, string("_"), string(n - 1)])
+                control_time = (n - 1) * time_step * 3600.0 # Time to apply action.
 
                 # Define the action, condition, and add the control.
                 action = wntrctrls.ControlAction(wntr_valve, "status", valve_status)
@@ -220,8 +217,8 @@ function _set_wntr_valve_controls(wntr_network::PyCall.PyObject, result::Dict{St
 end
 
 
-function _set_wntr_pump_controls(wntr_network::PyCall.PyObject, result::Dict{String, Any}, time_step::Float64)
-    nw_solution = result["solution"]["nw"]
+function _set_wntr_pump_controls(wntr_network::PyCall.PyObject, solution::Dict{String, Any}, time_step::Float64)
+    nw_solution = solution["nw"]
     network_ids = sort([parse(Int, nw) for (nw, nw_sol) in nw_solution])
 
     for (n, nw) in enumerate(network_ids)
@@ -230,16 +227,16 @@ function _set_wntr_pump_controls(wntr_network::PyCall.PyObject, result::Dict{Str
             wntr_pump = wntr_network.get_link(wntr_pump_name)
             pump_status = round(pump["status"])
 
-            nw_previous = n == 1 ? nw : string(network_ids[n - 1])
+            nw_previous = n == 1 ? string(nw) : string(network_ids[n - 1])
             pump_status_previous = round(nw_solution[nw_previous]["pump"][i]["status"])
 
             if n > 1 && pump_status == pump_status_previous
                 continue # No change in pump status, no need to add control.
             else
                 # Define control name and time metadata.
-                control_time = (n - 1) * time_step * 3600.0 # Time to apply action.
                 control_name_prefix = join(["pump_control_", string(wntr_pump_name)])
                 control_name = join([control_name_prefix, string("_"), string(n - 1)])
+                control_time = (n - 1) * time_step * 3600.0 # Time to apply action.
 
                 # Define the action, condition, and add the control.
                 action = wntrctrls.ControlAction(wntr_pump, "status", pump_status)
@@ -281,10 +278,10 @@ end
 """
 Update `wntr_network` controls from a WaterModels `result` with a time step `time_step`.
 """
-function update_wntr_controls(wntr_network::PyCall.PyObject, result::Dict{String,Any}, time_step::Float64)
+function update_wntr_controls(wntr_network::PyCall.PyObject, solution::Dict{String,Any}, time_step::Float64)
     _clear_wntr_controls(wntr_network)
-    _set_wntr_valve_controls(wntr_network, result, time_step)
-    _set_wntr_pump_controls(wntr_network, result, time_step)
+    _set_wntr_valve_controls(wntr_network, solution, time_step)
+    _set_wntr_pump_controls(wntr_network, solution, time_step)
 end
 
 
