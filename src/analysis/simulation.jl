@@ -198,7 +198,8 @@ function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
     # add shutoff valve controls 
     for tx in 1:num_time_step
         for (valve_id,shutoff_valve_info) in wm_solution["solution"]["nw"][string(tx)]["valve"]
-            if wm_data["nw"]["1"]["valve"][valve_id]["source_id"][1] == "valve"
+            if string(wm_data["nw"]["1"]["valve"][valve_id]["flow_direction"]) == "UNKNOWN"
+
                 shutoff_valve_name = "valve"*valve_id
                 shutoff_valve_obj = wn.get_link(shutoff_valve_name)
                 shutoff_valve_status = round(shutoff_valve_info["status"])
