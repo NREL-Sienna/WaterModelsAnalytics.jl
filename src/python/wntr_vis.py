@@ -113,18 +113,20 @@ def build_graph(wn, time=1, wnsol=None):
         if clr[2] < 0.6:
             Gnx.nodes[node]["fontcolor"] = "white"
     
-    # loop over edges -- really not sure if this is efficient or if there is a more
-    # elegant way (can't seem to use link label alone; see comment below)
+    # loop over links/edges (note: `list(Gnx.edges)` provides a list of the edge keys)
     for edge in Gnx.edges:
         eatts = Gnx.edges.get(edge)
+        link = wn.get_link(edge[2])
         if eatts['type'] == 'Pump':
             eatts['color'] = 'red'
             eatts['style'] = 'bold'
             eatts['label'] = "Pmp\n" + edge[2]
         elif edge[2] in wn._check_valves:
-            eatts['label'] = "CV\n" + edge[2]
+            length = "%2.2g m" % link.length
+            eatts['label'] = "CV\n" + edge[2] + "\n" + length
         else:
-            eatts["label"] = edge[2]
+            length = "%2.2g m" % link.length
+            eatts["label"] = edge[2] + "\n" + length
         # TODO:  process for shutoff valves  `wn._get_valve_controls()`
 
     return nx.nx_agraph.to_agraph(Gnx)
