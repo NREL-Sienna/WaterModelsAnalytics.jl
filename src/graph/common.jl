@@ -2,16 +2,18 @@
 # - add keyword argument to choose whether to enable/disable showing indices?
 # * redo adding solution information to the network with valve refactor
 # - parse regulators, throttle control valves, others???
-# * need to check whether epanet-data object can still be processed for visualization
+# * for "epanet-data" objects catch shutoff valves; might want to correct these in
+#   WaterModels
 
 
 
 """
-Build networkx graph object from a WaterModels network dictionary parsed from an EPANET file.
+Build pygraphviz graph object from a WaterModels network dictionary parsed from an EPANET
+file.
 """
 function build_graph(data::Dict{String,Any},
                      solution::Union{Nothing, Dict{String,Any}} = nothing)
-    # presumes input is data dict from WaterModels.parse_file()
+    # presumes input is data dict from WaterModels.parse_file() OR WaterModels.parse_epanet()
 
     # TODO:
     # - check that input dictionary has the expected fields
@@ -19,13 +21,12 @@ function build_graph(data::Dict{String,Any},
     G = pgv.AGraph(strict=false, directed=true)
 
     add_nodes!(G, data["node"])
-    #node_labels!(G, data["junction"])
-    node_labels!(G, data["demand"]) # junction renamed demand? 
+    node_labels!(G, data["demand"]) 
     node_labels!(G, data["reservoir"])
     node_labels!(G, data["tank"])
     
     add_links!(G, data["pipe"], "pipe")
-    add_links!(G, data["short_pipe"], "short") # not implemented yet? JJS 10/2/20
+    add_links!(G, data["short_pipe"], "short") 
     add_links!(G, data["pump"], "pump")
     add_links!(G, data["valve"], "valve") 
 
@@ -138,8 +139,7 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         elseif node_type == "tank"
             PyCall.set!(nodeobj.attr, "label", "Tank\n"*label)
         else
-            #dem = node["demand"]
-            dem = node["flow_rate"] # renamed flow_rate?
+            dem = node["flow_rate"] 
             if dem==0
                 PyCall.set!(nodeobj.attr, "label", label)
             else
@@ -179,7 +179,14 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any}, link_type::Stri
             else
                 length = "0 m"
             end
-            G.add_edge(link["node_fr"], link["node_to"], key, label=label*"\n"*length)
+            # for data-epanet object, valves are not identified yet, so need to check for
+            # check valves, JJS 11/27/20
+            if link["flow_direction"] == _WM.UNKNOWN
+                G.add_edge(link["node_fr"], link["node_to"], key, label=label*"\n"*length)
+            else
+                G.add_edge(link["node_fr"], link["node_to"], key,
+                           label="CV\n"*label*"\n"*length)
+            end
         end
     end
 end
