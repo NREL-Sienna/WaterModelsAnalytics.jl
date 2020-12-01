@@ -3,7 +3,6 @@ Functions to create graph visualizations of WNTR networks
 """
 
 ## TODO:
-# - display the length of links
 # - display information from the network solution
 # - process shutoff valves; rarely occur in networks we are looking to use...
 
