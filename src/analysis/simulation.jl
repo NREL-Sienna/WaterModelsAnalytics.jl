@@ -1,230 +1,332 @@
+function _populate_wntr_time_options!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    # Populate global WNTR time step options.
+    wntr_network.options.time.duration = data["duration"]
+    wntr_network.options.time.hydraulic_timestep = data["time_step"]
+    wntr_network.options.time.quality_timestep = data["time_step"]
+    wntr_network.options.time.rule_timestep = data["time_step"]
+    wntr_network.options.time.pattern_timestep = data["time_step"]
+    wntr_network.options.time.report_timestep = data["time_step"]
+
+    # Populate global WNTR start time options.
+    wntr_network.options.time.pattern_start = 0
+    wntr_network.options.time.report_start = 0
+    wntr_network.options.time.start_clocktime = 0
+end
+
+
+function _populate_wntr_hydraulic_options!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    wntr_network.options.hydraulic.headloss = uppercase(data["nw"]["1"]["head_loss"])
+    wntr_network.options.hydraulic.trials = 100
+    wntr_network.options.hydraulic.accuracy = 0.001
+    wntr_network.options.hydraulic.unbalanced = "CONTINUE"
+    wntr_network.options.hydraulic.unbalanced_value = 100
+end
+
+
+function _add_wntr_demands!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    for (i, demand) in data["nw"]["1"]["demand"]
+        # Get nodal information associated with the demand.
+        node_id = string(demand["node"])
+        node = data["nw"]["1"]["node"][node_id]
+        elevation = node["elevation"]
+
+        # Prepare metadata for adding the demand.
+        coordinates = haskey(node, "coordinates") ? node["coordinates"] : (0.0, 0.0)
+
+        # Prepare the demand head pattern array.
+        network_ids = sort([parse(Int, nw) for (nw, nw_data) in data["nw"]])
+        pattern = [data["nw"][string(n)]["demand"][i]["flow_rate"] for n in network_ids]
+
+        # Add the demand flow rate pattern to the WNTR network.
+        wntr_network.add_pattern("demand_pattern_" * node_id, pattern)
+
+        # Add the demand to the WNTR network.
+        wntr_network.add_junction(
+            node_id, base_demand = 1.0, demand_pattern = "demand_pattern_" * node_id,
+            elevation = elevation, coordinates = coordinates)
+    end
+end
+
+
+function _add_wntr_reservoirs!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    for (i, reservoir) in data["nw"]["1"]["reservoir"]
+        # Prepare metadata for adding the reservoir.
+        node_id = string(reservoir["node"])
+        node = data["nw"]["1"]["node"][node_id]
+        coordinates = haskey(node, "coordinates") ? node["coordinates"] : (0.0, 0.0)
+
+        # Prepare the reservoir head pattern array.
+        network_ids = sort([parse(Int, nw) for (nw, nw_data) in data["nw"]])
+        pattern = [data["nw"][string(n)]["node"][node_id]["head"] for n in network_ids]
+
+        # Add the reservoir head pattern to the WNTR network.
+        wntr_network.add_pattern("reservoir_pattern_" * node_id, pattern)
+
+        # Add the reservoir to the WNTR network.
+        wntr_network.add_reservoir(
+            node_id, base_head = 1.0, head_pattern = "reservoir_pattern_" * node_id,
+            coordinates = coordinates)
+    end
+end
+
+
+function _add_wntr_tanks!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    for (i, tank) in data["nw"]["1"]["tank"]
+        # Get nodal information associated with the tank.
+        node_id = string(tank["node"])
+        node = data["nw"]["1"]["node"][node_id]
+
+        # Prepare metadata for adding the tank.
+        elevation, init_level = node["elevation"], tank["init_level"]
+        min_level, max_level = tank["min_level"], tank["max_level"]
+        diameter, min_vol = tank["diameter"], tank["min_vol"]
+        coordinates = haskey(node, "coordinates") ? node["coordinates"] : (0.0, 0.0)
+
+        # Add the tank to the WNTR network.
+        wntr_network.add_tank(
+            node_id, elevation = elevation, init_level = init_level, min_level = min_level,
+            max_level = max_level, diameter = diameter, min_vol = min_vol,
+            vol_curve = nothing, overflow = false, coordinates = coordinates)
+    end
+end
+
+
+function _add_wntr_bare_nodes!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    demand_nodes = [demand["node"] for (i, demand) in data["nw"]["1"]["demand"]]
+    tank_nodes = [tank["node"] for (i, tank) in data["nw"]["1"]["tank"]]
+    reservoir_nodes = [reservoir["node"] for (i, reservoir) in data["nw"]["1"]["reservoir"]]
+    populated_nodes = vcat(demand_nodes, tank_nodes, reservoir_nodes)
+    bare_nodes = filter(x -> !(x.second["index"] in populated_nodes), data["nw"]["1"]["node"])
+
+    for (i, node) in bare_nodes
+        # Prepare metadata for adding the bare node.
+        elevation = node["elevation"]
+        coordinates = haskey(node, "coordinates") ? node["coordinates"] : (0.0, 0.0)
+
+        # Add the bare node to the WNTR network.
+        wntr_network.add_junction(
+            i, base_demand = 0.0, elevation = elevation, coordinates = coordinates)
+    end
+end
+
+
+function _add_wntr_pipes!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    for (i, pipe) in data["nw"]["1"]["pipe"]
+        node_fr, node_to = string(pipe["node_fr"]), string(pipe["node_to"])
+        length, diameter = pipe["length"], pipe["diameter"]
+        roughness, minor_loss = pipe["roughness"], pipe["minor_loss"]
+
+        if pipe["status"] == 1
+            # Add the pipe to the WNTR network.
+            wntr_network.add_pipe(
+                "pipe" * i, node_fr, node_to, length = length, diameter = diameter,
+                roughness = roughness, minor_loss = minor_loss, status = "Open")
+        end
+    end
+end
+
+
+function _add_wntr_pumps!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    for (i, pump) in data["nw"]["1"]["pump"]
+        if pump["status"] == 1
+            # Get pump metadata.
+            node_fr, node_to = string(pump["node_fr"]), string(pump["node_to"])
+
+            # Add the pump's head curve as a WNTR curve.
+            wntr_network.add_curve("pump_head_curve_" * i, "HEAD", pump["head_curve"])
+
+            # Add the pump to the WNTR network.
+            wntr_network.add_pump(
+                "pump" * i, node_fr, node_to, pump_type = "HEAD",
+                pump_parameter = "pump_head_curve_" * i, speed = 1.0, pattern = nothing)
+
+            # Set the efficiency of the pump in the WNTR network.
+            if haskey(pump, "efficiency_curve")
+                efficiency_curve = pump["efficiency_curve"]
+                wntr_network.add_curve("pump_eff_curve_" * i, "EFFICIENCY", efficiency_curve)
+                wntr_efficiency_curve = wntr_network.get_curve("pump_eff_curve_" * i)
+                wntr_network.get_link("pump" * i).efficiency = wntr_efficiency_curve
+            else
+                wntr_network.options.energy.global_efficiency = pump["efficiency"]
+            end
+        end
+    end
+end
+
+
+function _add_wntr_short_pipes!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    for (i, short_pipe) in data["nw"]["1"]["short_pipe"]
+        node_fr, node_to = string(short_pipe["node_fr"]), string(short_pipe["node_to"])
+        length, diameter = 1.0e-3, 1.0 # Dummy length and diameter.
+        roughness, minor_loss = 100.0, short_pipe["minor_loss"]
+
+        if short_pipe["status"] == 1
+            # Add the short_pipe to the WNTR network.
+            wntr_network.add_pipe(
+                "short_pipe" * i, node_fr, node_to, length = length, diameter = diameter,
+                roughness = roughness, minor_loss = minor_loss, status = "Open")
+        end
+    end
+end
+
+
+function _add_wntr_valves!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
+    for (i, valve) in data["nw"]["1"]["valve"]
+        node_fr, node_to = string(valve["node_fr"]), string(valve["node_to"])
+        length, diameter = 1.0e-3, 1.0 # Dummy length and diameter.
+        roughness, minor_loss = 100.0, valve["minor_loss"]
+        check_valve_flag = string(valve["flow_direction"]) == "POSITIVE"
+
+        if valve["status"] == 1
+            # Add the valve to the WNTR network.
+            wntr_network.add_pipe(
+                "valve" * i, node_fr, node_to, length = length, diameter = diameter,
+                roughness = roughness, minor_loss = minor_loss, status = "Open",
+                check_valve_flag = check_valve_flag)
+        end
+    end
+end
+
+
+function _clear_wntr_controls(wntr_network::PyCall.PyObject)
+    for i in 1:length(wntr_network.control_name_list)
+        wntr_network.remove_control(wntr_network.control_name_list[1])
+    end
+end
+
+
+function _set_wntr_tank_level(wntr_network::PyCall.PyObject, data::Dict{String, Any}, solution::Dict{String, Any})
+    for (i, tank) in solution["nw"]["1"]["tank"]
+        tank_node_name = string(data["nw"]["1"]["tank"][i]["node"])
+        wntr_tank = wntr_network.get_node(tank_node_name)
+        wntr_tank.init_level = solution["nw"]["1"]["node"][tank_node_name]["p"]
+    end
+end
+
+
+function _set_wntr_valve_controls(wntr_network::PyCall.PyObject, data::Dict{String, Any}, solution::Dict{String, Any}, time_step::Float64)
+    network_ids = sort([parse(Int, nw) for (nw, nw_sol) in solution["nw"]])
+
+    for (n, nw) in enumerate(network_ids)
+        for (i, valve) in solution["nw"][string(nw)]["valve"]
+            if data["nw"][string(nw)]["valve"][i]["flow_direction"] == _WM.UNKNOWN
+                wntr_valve_name = "valve" * i
+                wntr_valve = wntr_network.get_link(wntr_valve_name)
+                valve_status = round(valve["status"])
+
+                nw_previous = n == 1 ? string(nw) : string(network_ids[n - 1])
+                valve_status_previous = round(solution["nw"][nw_previous]["valve"][i]["status"])
+
+                if n > 1 && valve_status == valve_status_previous
+                    continue # No change in valve status, no need to add control.
+                else
+                    # Define control name and time metadata.
+                    control_name_prefix = join(["valve_control_", string(wntr_valve_name)])
+                    control_name = join([control_name_prefix, string("_"), string(n - 1)])
+                    control_time = (n - 1) * time_step # Time to apply action.
+
+                    # Define the action, condition, and add the control.
+                    action = wntrctrls.ControlAction(wntr_valve, "status", valve_status)
+                    condition = wntrctrls.SimTimeCondition(wntr_network, "=", control_time)
+                    control = wntrctrls.Control(condition, action)
+                    wntr_network.add_control(control_name, control)
+                end
+            end
+        end
+    end
+end
+
+
+function _set_wntr_pump_controls(wntr_network::PyCall.PyObject, data::Dict{String, Any}, solution::Dict{String, Any}, time_step::Float64)
+    network_ids = sort([parse(Int, nw) for (nw, nw_sol) in solution["nw"]])
+
+    for (n, nw) in enumerate(network_ids)
+        for (i, pump) in solution["nw"][string(nw)]["pump"]
+            wntr_pump_name = "pump" * i
+            wntr_pump = wntr_network.get_link(wntr_pump_name)
+            pump_status = round(pump["status"])
+
+            nw_previous = n == 1 ? string(nw) : string(network_ids[n - 1])
+            pump_status_previous = round(solution["nw"][nw_previous]["pump"][i]["status"])
+
+            if n > 1 && pump_status == pump_status_previous
+                continue # No change in pump status, no need to add control.
+            else
+                # Define control name and time metadata.
+                control_name_prefix = join(["pump_control_", string(wntr_pump_name)])
+                control_name = join([control_name_prefix, string("_"), string(n - 1)])
+                control_time = (n - 1) * time_step # Time to apply action.
+
+                # Define the action, condition, and add the control.
+                action = wntrctrls.ControlAction(wntr_pump, "status", pump_status)
+                condition = wntrctrls.SimTimeCondition(wntr_network, "=", control_time)
+                control = wntrctrls.Control(condition, action)
+                wntr_network.add_control(control_name, control)
+            end
+        end
+    end
+end
+
 
 """
-Perform EPANET hydraulic simulation (via WNTR) using controls in WM
-wm_solution. 
+Initialize WNTR network from a WaterModels `data` dictionary.
 """
+function initialize_wntr_network(data::Dict{String, Any})
+    # Initialize a new WNTR network.
+    wntr_network = wntr.network.model.WaterNetworkModel()
+    _populate_wntr_time_options!(wntr_network, data)
+    _populate_wntr_hydraulic_options!(wntr_network, data)
 
-function simulate(wm_data::Dict{String,Any}, wm_solution::Dict{String,Any},
-                     inpfilepath::String)
+    # Add nodal components to the network.
+    _add_wntr_demands!(wntr_network, data)
+    _add_wntr_reservoirs!(wntr_network, data)
+    _add_wntr_tanks!(wntr_network, data)
+    _add_wntr_bare_nodes!(wntr_network, data)
 
-    # populate a wntr network with simulation results
-    wn = wntr.network.model.WaterNetworkModel(inpfilepath)
+    # Add node-connecting components to the network.
+    _add_wntr_pipes!(wntr_network, data)
+    _add_wntr_pumps!(wntr_network, data)
+    _add_wntr_short_pipes!(wntr_network, data)
+    _add_wntr_valves!(wntr_network, data)
 
-    # store pump names in a set
-    pump_set = [pump["name"] for (i, pump) in wm_data["nw"]["1"]["pump"]]
+    # Return the final WNTR network object.
+    return wntr_network
+end
 
-    # store shutoff valve names in a set
-    shutoff_valve_set = Set()
-    for (key,shutoff_valve) in wm_solution["solution"]["nw"]["1"]["valve"]
-        valve_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
-        if string(wm_data["nw"]["1"]["valve"][key]["flow_direction"]) == "UNKNOWN"
-            push!(shutoff_valve_set,valve_name)
-        end
-    end
 
-    # store tank names in a set
-    tank_set = Set()
-    tank_index_dict = Dict{String,String}()     # index designated for tanks 
-    tank_node_id_dict = Dict{String,String}()   # node id of tanks
-    for (key,tank) in wm_solution["solution"]["nw"]["1"]["tank"]
-        tank_name = wm_data["nw"]["1"]["tank"][key]["source_id"][2] # epanet name
-        push!(tank_set, tank_name)
-        tank_index_dict[tank_name] = key
-        tank_node_id_dict[tank_name] = string(wm_data["nw"]["1"]["tank"][key]["node"])
-    end
+function _get_valve_statuses(wntr_result::PyCall.PyObject, data::Dict{String, Any}, solution::Dict{String, Any})
+    network_ids = sort([parse(Int, nw) for (nw, nw_sol) in solution["nw"]])
 
-    # store artificial links and nodes connected to tanks in a Dict
-    arti_tank_link_dict = Dict{String,String}()
-    arti_tank_node_dict = Dict{String,String}()
-    tank_link_dict = Dict{String,Any}()
-
-    for tank_name in tank_set
-        tank_link_dict[tank_name] = Set()   # links in the original EPANET file that are connected to the tanks
-    end
-
-    # retrieve added artificial nodes and links for tanks
-    for (key,valve) in wm_data["nw"]["1"]["valve"]
-        artificial_link = wm_data["nw"]["1"]["valve"][key]["source_id"][2] # not necessarily an artifical link
-        node_to_index = string(wm_data["nw"]["1"]["valve"][key]["node_to"])
-        node_fr_index = string(wm_data["nw"]["1"]["valve"][key]["node_fr"])
-
-        if wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2] in tank_set
-            if node_to_index != tank_node_id_dict[wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]]    # we are looking for the artificial node, NOT the tank node
-                if node_fr_index == tank_node_id_dict[wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]]
-                    tank_name = wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]
-                    arti_tank_link_dict[tank_name] = "atl"*artificial_link    # "atl" is a prefix that stands for "artificial link"
-                    arti_tank_node_dict[tank_name] = "atn"*node_to_index      # "atn" is a prefix that stands for "artificial node"
-                end
-            end
-        end
-
-        if wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2] in tank_set
-            if node_fr_index != tank_node_id_dict[wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]]    # we are looking for the artificial node, NOT the tank node
-                if node_to_index == tank_node_id_dict[wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]]
-
-                    tank_name = wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]
-                    arti_tank_link_dict[tank_name] = "atl"*artificial_link    # "atl" is a prefix that stands for "artificial link"
-                    arti_tank_node_dict[tank_name] = "atn"*node_fr_index      # "atn" is a prefix that stands for "artificial node"
-                end
+    for (n, nw) in enumerate(network_ids)
+        for (i, valve) in solution["nw"][string(nw)]["valve"]
+            if data["nw"]["1"]["valve"][i]["source_id"][1] == "valve"
+                wntr_valve_name = "valve" * i
+                wntr_valve = wntr_network.get_link(wntr_valve_name)
+                valve_status = round(valve["status"])
             end
         end
     end
+end
 
-    # retrieve original links connected to each tank
-    link_types = ["pipe", "valve", "pump"]
-    for ltype in link_types
-        for (key, link) in wm_solution["solution"]["nw"]["1"][ltype]
-            link_name = wm_data["nw"]["1"][ltype][key]["source_id"][2]
-            node_to_index = string(wm_data["nw"]["1"][ltype][key]["node_to"])
-            node_fr_index = string(wm_data["nw"]["1"][ltype][key]["node_fr"])
-            node_to_name = wm_data["nw"]["1"]["node"][node_to_index]["source_id"][2]
-            node_fr_name = wm_data["nw"]["1"]["node"][node_fr_index]["source_id"][2]
-            for tank_name in tank_set
-                if ((node_to_name == tank_name) & !(node_fr_name == tank_name)) | (!(node_to_name == tank_name) & (node_fr_name == tank_name))
-                    push!(tank_link_dict[tank_name],link_name)
-                end
-            end
-        end
-    end
 
-    ## add artificial nodes and links to tanks in wn 
-    for tank_name in tank_set
-        tank_elevation = wn.nodes._data[tank_name].elevation
-        diameter = wn.nodes._data[tank_name].diameter
+"""
+Update `wntr_network` controls from a WaterModels `result` with a time step `time_step`.
+"""
+function update_wntr_controls(wntr_network::PyCall.PyObject, data::Dict{String, Any}, solution::Dict{String, Any}, time_step::Float64)
+    _clear_wntr_controls(wntr_network)
+    _set_wntr_tank_level(wntr_network, data, solution)
+    _set_wntr_pump_controls(wntr_network, data, solution, time_step)
+    _set_wntr_valve_controls(wntr_network, data, solution, time_step)
+end
 
-        # enforce the initial levels of tanks 
-        wn.nodes._data[tank_name].init_level = wm_solution["solution"]["nw"]["1"]["node"][tank_node_id_dict[tank_name]]["p"]
 
-        # add artificial node and link
-        wn.add_junction(arti_tank_node_dict[tank_name],base_demand=0,elevation=tank_elevation)  
-        wn.add_pipe(arti_tank_link_dict[tank_name],start_node_name=arti_tank_node_dict[tank_name],end_node_name=tank_name,   
-        length=1e-3,diameter=1,roughness=100,minor_loss=0,status="Open",check_valve_flag=false)
-
-        # save information of tank links, re-connect them to artificial nodes
-        for link_name in tank_link_dict[tank_name]
-            # save link info
-            start_node_name = wn.links._data[link_name].start_node_name
-            end_node_name = wn.links._data[link_name].end_node_name
-            pipe_length = wn.links._data[link_name].length
-            diameter = wn.links._data[link_name].diameter
-            roughness = wn.links._data[link_name].roughness
-            minor_loss = wn.links._data[link_name].minor_loss
-            status = wn.links._data[link_name].status
-            if status == 1
-                status = "Open"
-            else
-                status = "Closed"
-            end
-            cv_flag = wn.links._data[link_name].cv 
-
-            # remove link
-            wn.remove_link(link_name,with_control=true,force=true)
-
-            # add the link back and connect to the artificial node
-            if start_node_name == tank_name
-                wn.add_pipe(link_name,start_node_name=arti_tank_node_dict[tank_name],end_node_name=end_node_name,
-                    length=pipe_length,diameter=diameter,roughness=roughness,minor_loss=minor_loss,status=status,check_valve_flag=cv_flag)
-            else
-                wn.add_pipe(link_name,start_node_name=start_node_name,end_node_name=arti_tank_node_dict[tank_name],
-                    length=pipe_length,diameter=diameter,roughness=roughness,minor_loss=minor_loss,status=status,check_valve_flag=cv_flag)
-            end
-        end
-    end
-
-    # retrieve added artificial nodes and links for check valves 
-    cv_set = Set()
-    arti_cv_link_dict = Dict{String,String}()    # added artificial link for check valve
-    arti_cv_node_dict = Dict{String,String}()    # added artificial node for check valve
-    for (key,valve) in wm_data["nw"]["1"]["valve"]
-        if wm_data["nw"]["1"]["valve"][key]["source_id"][1] == "pipe" # this condition finds check valves 
-            cv_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
-            push!(cv_set,cv_name)
-            arti_cv_link_dict[cv_name] = "avl"*cv_name
-            arti_cv_node_dict[cv_name] = "avn"*string(wm_data["nw"]["1"]["valve"][key]["node_to"])
-        end
-    end
-    
-    # add artificial nodes and links associatd with check valves in wn 
-    for cv_name in cv_set
-        cv_elevation = wn.nodes._data[wn.links._data[cv_name].start_node_name].elevation    # elevation of the start node
-        # add artificial node and link
-        wn.add_junction(arti_cv_node_dict[cv_name],base_demand=0,elevation=cv_elevation)  
-        wn.add_pipe(arti_cv_link_dict[cv_name],start_node_name=wn.links._data[cv_name].start_node_name,end_node_name=arti_cv_node_dict[cv_name],   
-        length=1e-3,diameter=1,roughness=100,minor_loss=0,status="Open",check_valve_flag=true)
-        # save link info
-        start_node_name = wn.links._data[cv_name].start_node_name
-        end_node_name = wn.links._data[cv_name].end_node_name
-        cv_length = wn.links._data[cv_name].length
-        diameter = wn.links._data[cv_name].diameter
-        roughness = wn.links._data[cv_name].roughness
-        minor_loss = wn.links._data[cv_name].minor_loss
-        status = wn.links._data[cv_name].status
-        if status == 1
-            status = "Open"
-        else
-            status = "Closed"
-        end
-        cv_flag = false # now we already have a new zero-length CV, this pipe doesn't have to be cv again
-
-        # remove link
-        wn.remove_link(cv_name,with_control=true,force=true)
-        # add the link back and connect to the artificial node
-        wn.add_pipe(cv_name,start_node_name=arti_cv_node_dict[cv_name],end_node_name=end_node_name,
-            length=cv_length,diameter=diameter,roughness=roughness,minor_loss=minor_loss,status=status,check_valve_flag=cv_flag)
-    end
-
-    # remove old controls
-    old_controls = wn.control_name_list
-    index_to_remove = 1
-    for i = 1:length(old_controls)
-        current_control = wn.get_control(old_controls[i])
-        control_target = string(current_control._then_actions[1]._target_obj._link_name)
-        wn.remove_control(wn.control_name_list[index_to_remove]) # remove one by one
-    end
-
-    # retrieve the duration of a time step of the number of time steps
-    num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
-    time_step = wm_data["time_step"]/3600                            # duration per time step (hour)
-
-    # add new shutoff valve controls
-    # NOTE: controls only need to be specified if something changed for the time
-    # period. Something to work on in future versions, JJS 11/2/20
-    for tx in 1:num_time_step
-        for (key,shutoff_valve_dict) in wm_solution["solution"]["nw"][string(tx)]["valve"]
-            shutoff_valve_name = wm_data["nw"]["1"]["valve"][key]["source_id"][2]
-            if shutoff_valve_name in shutoff_valve_set
-                # the shutoff_valve always include a added prefix in its name in WNTR
-                shutoff_valve_name = "atl"*shutoff_valve_name    
-                shutoff_valve_obj = wn.get_link(shutoff_valve_name)
-                shutoff_valve_status = round(shutoff_valve_dict["status"])
-                act = wntrctrls.ControlAction(shutoff_valve_obj,"status",shutoff_valve_status)
-                cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*time_step*3600)
-                ctrl = wntrctrls.Control(cond,act)
-                ctrl_name = join(["Valve_control_",string(shutoff_valve_name),string("_"),string(tx-1)])
-                wn.add_control(ctrl_name,ctrl)
-            end
-        end
-    end
-
-    # add new pump controls
-    for tx in 1:num_time_step
-        for (key,pump_dict) in wm_solution["solution"]["nw"][string(tx)]["pump"]
-            pump_name = wm_data["nw"]["1"]["pump"][key]["source_id"][2] # epanet name
-            pump_obj = wn.get_link(pump_name)
-            pump_status = round(pump_dict["status"])
-            act = wntrctrls.ControlAction(pump_obj,"status",pump_status)
-            cond = wntrctrls.SimTimeCondition(wn, "=",(tx-1)*time_step*3600)
-            ctrl = wntrctrls.Control(cond,act)
-            ctrl_name = join(["Pump_control_",string(pump_name),string("_"),string(tx-1)])
-            wn.add_control(ctrl_name,ctrl)
-        end
-    end
-
-    # WNTR simulation 
-    wns = wntr.sim.EpanetSimulator(wn)
-    path_to_tmp_folder = mktempdir()
-    wnres = wns.run_sim(joinpath(path_to_tmp_folder, "epanetfile"))
-    rm(path_to_tmp_folder, recursive = true)
-
-    return wn, wnres
-end 
+"""
+Perform EPANET hydraulic simulation (via WNTR) using controls from `solution`.
+"""
+function simulate_wntr(wntr_network::PyCall.PyObject)
+    wntr_simulator = wntr.sim.EpanetSimulator(wntr_network)
+    path_to_tmp_directory = mktempdir()
+    wntr_result = wntr_simulator.run_sim(joinpath(path_to_tmp_directory, "epanetfile"))
+    rm(path_to_tmp_directory, recursive = true) # Clean up temporary files.
+    return wntr_result # Return the WNTR result object.
+end
