@@ -49,7 +49,8 @@ function plot_pumps(pumps::Dict{String,Any}; normalized=true, screen=true, reuse
             q = [1]
             pow = [1]
         else
-            q = Array(range(qmin, stop=qmax, length=7)) # can change number of points here
+            q = Array(range(qmin, stop=qmax, length=7)) # can change number of points here;
+                                                        # make this a user option?
             pow = headitp(q).*q./effitp(q)
         end
 
