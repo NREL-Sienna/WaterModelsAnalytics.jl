@@ -88,10 +88,13 @@ def build_graph(wn, time=1, wnsol=None):
     resnames = res_elevs.index.values
     for node in resnames:
         res = wn.get_node(node)
-        mults = res.head_timeseries.pattern.multipliers
-        # "base_value" should be the same as what was aleady queried by
-        # "base_head", so either should work
-        res_elevs[node] = res.head_timeseries.base_value * mults[time-1]
+        if res.head_timeseries.pattern is None:
+            res_elevs[node] = res.head_timeseries.base_value
+        else:
+            mults = res.head_timeseries.pattern.multipliers
+            # "base_value" should be the same as what was aleady queried by
+            # "base_head", so either should work
+            res_elevs[node] = res.head_timeseries.base_value * mults[time-1]
     
     elevs = pd.concat((elevs, res_elevs))
     elmin = elevs.min()
