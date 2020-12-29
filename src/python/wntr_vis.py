@@ -3,8 +3,7 @@ Functions to create graph visualizations of WNTR networks
 """
 
 ## TODO:
-# - display information from the network solution
-# - process shutoff valves; rarely occur in networks we are looking to use...
+# - decide about adding gain/headless to pumps/pipes
 
 import numpy as np
 import wntr
@@ -14,7 +13,8 @@ import pandas as pd
 import warnings
 import matplotlib
 from matplotlib import cm, colors, colorbar, pyplot
-import subprocess
+import PyPDF2
+import os
 
 
 def build_graph(wn, time=1, wnsol=None):
@@ -26,13 +26,22 @@ def build_graph(wn, time=1, wnsol=None):
     `wnsol` is currently ignored [TBD]
     """    
 
-    # # TBD: use the simulation results
-    # link_results = wnsol.link
-    # node_results = wnsol.node
-
     # create the graph
     Gnx = wn.get_graph() # networkx object; more features and functions
 
+    node_attrs(wn, Gnx, time)
+    link_attrs(wn, Gnx)
+    if wnsol is not None:
+        add_solution(wn, Gnx, wnsol, time)
+
+    return nx.nx_agraph.to_agraph(Gnx)
+    #return Gnx
+
+
+def node_attrs(wn, Gnx, time):
+    """
+    Add/change node attributes suitable for visualization
+    """
     # node position attributes (coordinates in inp file)
     pos = nx.get_node_attributes(Gnx, "pos")
 
@@ -114,8 +123,33 @@ def build_graph(wn, time=1, wnsol=None):
         Gnx.nodes[node]['fillcolor'] = clrstr[1:-1] # remove brackets from string
         if clr[2] < 0.6:
             Gnx.nodes[node]["fontcolor"] = "white"
+    return
+
+
+def link_attrs(wn, Gnx):
+    """
+    Add/change link attributes suitable for visualization
+    """
+    # loop over controls to find pipes with shutoff valves
+    sv_name_list = []
+    for control in wn.controls():
+        link = control[1].actions()[0].target()[0]
+        if link.link_type == "Pipe":
+            if link.name not in sv_name_list:
+                sv_name_list.append(link.name)
+    # loop over links that have a closed status to find closed pipes; will
+    # presume these could be controllable by shutoff valves, even if controls
+    # are not specified in the inp file
+    status = wn.query_link_attribute("status")
+    closed = status[status == 0]
+    for name in closed.index:
+        link = wn.get_link(name)
+        if link.link_type == "Pipe":
+            if link.name not in sv_name_list:
+                sv_name_list.append(link.name)
     
-    # loop over links/edges (note: `list(Gnx.edges)` provides a list of the edge keys)
+    # loop over links to set graphviz attributes
+    # (note: `list(Gnx.edges)` provides a list of the edge keys)
     for edge in Gnx.edges:
         eatts = Gnx.edges.get(edge)
         link = wn.get_link(edge[2])
@@ -123,15 +157,53 @@ def build_graph(wn, time=1, wnsol=None):
             eatts['color'] = 'red'
             eatts['style'] = 'bold'
             eatts['label'] = "Pmp\n" + edge[2]
+        elif eatts['type'] == 'Valve': # these are special-type valves, e.g., PRVs
+            link = wn.get_link(edge[2])
+            eatts['color'] = 'purple' # what is a good eye-catching color?
+            eatts['style'] = 'bold'
+            eatts['label'] = link.valve_type + "\n" + edge[2]
         elif edge[2] in wn._check_valves:
             length = "%2.2g m" % link.length
             eatts['label'] = "CV\n" + edge[2] + "\n" + length
+        elif edge[2] in sv_name_list:
+            length = "%2.2g m" % link.length
+            eatts['label'] = "SV\n" + edge[2] + "\n" + length
         else:
             length = "%2.2g m" % link.length
             eatts["label"] = edge[2] + "\n" + length
-        # TODO:  process for shutoff valves  `wn._get_valve_controls()`
+    return
 
-    return nx.nx_agraph.to_agraph(Gnx)
+
+def add_solution(wn, Gnx, wnsol, time):
+    """
+    Add head and flowrates to the labels for nodes and links, respectively.
+    """
+    # add head to the node labels (could alternatively show pressure)
+    node_results = wnsol.node
+    head = node_results["head"]
+    for node in Gnx.nodes:
+        natts = Gnx.nodes.get(node)
+        headval = _val_string_cut(head[node].iloc[time], 1e-10)
+        if "label" in natts:
+            natts["label"] += "\nh: " + headval
+        else:
+            natts["label"] = node + "\nh: " + headval
+    # add flow to the link labels; also show gain/headloss? need to decide and make
+    # consistent with WM version, JJS 12/29/20
+    link_results = wnsol.link
+    flowrate = link_results["flowrate"]
+    for link in Gnx.edges:
+        flowval = _val_string_cut(flowrate[link[2]].iloc[time], 1e-10)
+        latts = Gnx.edges.get(link)
+        latts["label"] += "\nq: " + flowval
+    return
+
+
+def _val_string_cut(val, cut):
+    if val < cut:
+        return "0"
+    else:
+        return "%2.2g" % val
 
 
 def write_graph(G, filename, layout="dot"):
@@ -144,7 +216,8 @@ def write_graph(G, filename, layout="dot"):
     except:
         G.draw(filename, prog="dot")
         warnings.warn("%s is not a supported layout; dot was used instead"%layout)
-    
+    return
+
 
 def write_cbar(G, filename):
     """
@@ -169,24 +242,63 @@ def write_cbar(G, filename):
     # if user's matplotlib environment was interactive, turn back on
     if interactive:
         pyplot.ion()
+    return
+
+
+def stack_cbar(graphfilename, cbfilename, outfilename, sep_page=False):
+    """
+    Stack the colorbar on top of the graph using PyPDF2. Use `sep_page=True` to
+    have the colorbar on a separate page (faster processing for large graphs).
+    """
+    
+    # use PyPDF2 to merge the coloarbar
+    input1 = PyPDF2.PdfFileReader(open(graphfilename, "rb"))
+    input2 = PyPDF2.PdfFileReader(open(cbfilename, "rb"))
+
+    output = PyPDF2.PdfFileWriter()
+
+    page1 = input1.getPage(0)
+    page2 = input2.getPage(0)
+    if sep_page:
+        output.addPage(page2) # set colorbar to be first page
+        output.addPage(page1)
+    else: # merge the colo
+        h1 = page1.mediaBox.getHeight()
+        w1 = page1.mediaBox.getWidth()
+        h2 = page2.mediaBox.getHeight()
+        w2 = page2.mediaBox.getWidth()
+        w = max(w1,w2)
+        h = h1 + h2
+        newpage = PyPDF2.pdf.PageObject.createBlankPage(None, w, h)
+        # the coordinates are referenced to lower-left
+        if w2>w1:
+            newpage.mergeScaledTranslatedPage(page1, 1, (w2-w1)/2, 0)
+            newpage.mergeScaledTranslatedPage(page2, 1, 0, h1) 
+        else:
+            newpage.mergeScaledTranslatedPage(page1, 1, 0, 0)
+            newpage.mergeScaledTranslatedPage(page2, 1, (w1-w2)/2, h1)
+        output.addPage(newpage)
+ 
+    outfile = open(outfilename, "wb")
+    output.write(outfile)
+    outfile.close()
+    return
 
 
 def write_visualization(wn, basefilename, time=1, wnsol=None, layout="dot",
-                        del_files=True):
+                        sep_page=False, del_files=True):
     """
     Write out to a file a visualization for a WaterModels network dictionary
     parsed from an EPANET file. `basefilename` should not include an extension
     and will be appended with `_w_cb.pdf` in the final output file, which is a
     multi-page PDF. The `layout` option equates to the layout functions of
-    graphviz (dot, neato, etc.). Use `del_files=False` to keep the intermediate
-    files.
+    graphviz (dot, neato, etc.). Use `sep_page=True` to have the colorbar on a
+    separate page (faster processing for large graphs). Use `del_files=False`
+    to keep the intermediate files.
 
     `time` is presumed to be integer hours; `wnsol` is currently ignored [TBD]
+
     """
-    # use ghostscript to make a 2-page pdf with the colorbar as the first page
-    # -- I'd like to embed the colorbar in the graph page, but I don't know how
-    # to do that yet, JJS 10/10/19
-    # maybe this will do it?:  https://github.com/mstamy2/PyPDF2
     graphfile = basefilename + "_graph.pdf"
     cbfile = basefilename + "_cbar.pdf"
     outfile = basefilename + "_w_cb.pdf"
@@ -194,10 +306,10 @@ def write_visualization(wn, basefilename, time=1, wnsol=None, layout="dot",
     G = build_graph(wn, time, wnsol)
     write_graph(G, graphfile, layout)
     write_cbar(G, cbfile)
+
+    stack_cbar(graphfile, cbfile, outfile, sep_page)
     
-    command = "gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile=" + outfile + " " + cbfile + " " + graphfile 
-    subprocess.run(command.split())
     if del_files:
-        # remove support files
-        command = "rm " + cbfile + " " + graphfile
-        subprocess.run(command.split())
+        os.remove(graphfile)
+        os.remove(cbfile)
+    return
