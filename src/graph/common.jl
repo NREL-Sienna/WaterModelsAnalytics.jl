@@ -1,9 +1,9 @@
 # TODO:
 # - add keyword argument to choose whether to enable/disable showing indices?
-# * redo adding solution information to the network with valve refactor
 # - parse regulators, throttle control valves, others???
-# * for "epanet-data" objects catch shutoff valves; might want to correct these in
-#   WaterModels
+# * for "epanet-data" objects, identify shutoff valves; might want to do that in
+#   WaterModels?
+# - use PyPDF2 to merge colorbar (will remove ghostscript dependency)
 
 
 
@@ -63,7 +63,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
     end
     xspan = xmax-xmin
     yspan = ymax-ymin
-    # scale to use to get "good" position results with graphviz output -- should
+    # scale to use to achieve "good" relative positioning with graphviz output --
     # calculate this systematically from the number of nodes?
     scale = 20
     
@@ -72,7 +72,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
     PyCall.set!(G."graph_attr", "elmin", elmin)
     PyCall.set!(G."graph_attr", "elmax", elmax)
 
-    # create and populate networkx nodes
+    # create and populate pygraphviz nodes
     for (key,node) in nodes
         # note that names will be rewritten for junctions, tanks, and reservoirs
         if haskey(node, "source_id")
@@ -172,7 +172,7 @@ function add_links!(G::PyCall.PyObject, links::Dict{String,Any}, link_type::Stri
             else # presume if set positive or negative flow, then it is a check valve
                 G.add_edge(link["node_fr"], link["node_to"], key, label="CV\n"*label)
             end
-        else # it is a pipe -- what about short pipes???
+        else # it is a pipe (or short pipe) 
             if haskey(link, "length")
                 # temporary until get all the types sorted out, JJS 10/2/20
                 length = @sprintf("%2.2g m", link["length"])
@@ -204,27 +204,39 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
         label = get(nodeobj.attr, "label")
         PyCall.set!(nodeobj.attr, "label", label*"\nh: "*head)
     end
-    # add flow to the labels for pipes and check- and shutoff-valves
-    pipesplus = [solution["pipe"], solution["check_valve"], solution["shutoff_valve"]]
-    for dict in pipesplus
-        for (key,pipesol) in dict
-            flow = @sprintf("%2.2g", pipesol["q"])
-            pipe = data["pipe"][key]
+    # add flow to the labels for pipes and valves
+    pipesplus = ["pipe", "short_pipe", "valve"]
+    for linktype in pipesplus
+        for (key,pipesol) in solution[linktype]
+            flow = _val_string_cut(pipesol["q"], 1e-10)
+            link = data[linktype][key]
             # may also need to use `key` if multiple pipes between nodes 
-            edgeobj = @pycall G."get_edge"(pipe["node_fr"], pipe["node_to"])::PyObject 
+            edgeobj = @pycall G."get_edge"(link["node_fr"], link["node_to"])::PyObject 
             label = get(edgeobj.attr, "label")
             PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow)
         end
     end
-    # add flow and gain to the pump labels 
+    # add flow and gain to the pump labels
+    ### remove the gain and only show flow?? if show gain for pumps, logically should show
+    ### headloss for the other links.... also, would only need one loop block if only show
+    ### flow, JJS 12/29/20
     for (key,pumpsol) in solution["pump"]
-        flow = @sprintf("%2.2g", pumpsol["q"])
-        gain = @sprintf("%2.2g", pumpsol["g"])
+        flow = _val_string_cut(pumpsol["q"], 1e-10)
+        gain = _val_string_cut(pumpsol["g"], 1e-3)
         pump = data["pump"][key]
         # may also need to use `key` if multiple pumps between nodes 
         edgeobj = @pycall G."get_edge"(pump["node_fr"], pump["node_to"])::PyObject 
         label = get(edgeobj.attr, "label")
         PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow*"\ng: "*gain)
+    end
+end
+
+
+function _val_string_cut(val::Real, cut::Real)
+    if val < cut
+        return "0"
+    else
+        return @sprintf("%2.2g", val)
     end
 end
 
