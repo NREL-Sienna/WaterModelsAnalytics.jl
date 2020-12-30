@@ -3,12 +3,11 @@ Functions to create graph visualizations of WNTR networks
 """
 
 ## TODO:
-# - decide about adding gain/headless to pumps/pipes
+# - decide about adding gain/headloss to pumps/pipes
 
 import numpy as np
 import wntr
 import networkx as nx
-#import pygraphviz as pgv
 import pandas as pd 
 import warnings
 import matplotlib
@@ -23,7 +22,7 @@ def build_graph(wn, time=1, wnsol=None):
 
     `time` is presumed to be integer hours
 
-    `wnsol` is currently ignored [TBD]
+    `wnsol`, if provided, should be a WNTR solution dict generated via `run.sim()` 
     """    
 
     # create the graph
@@ -35,7 +34,6 @@ def build_graph(wn, time=1, wnsol=None):
         add_solution(wn, Gnx, wnsol, time)
 
     return nx.nx_agraph.to_agraph(Gnx)
-    #return Gnx
 
 
 def node_attrs(wn, Gnx, time):
@@ -259,10 +257,10 @@ def stack_cbar(graphfilename, cbfilename, outfilename, sep_page=False):
 
     page1 = input1.getPage(0)
     page2 = input2.getPage(0)
-    if sep_page:
-        output.addPage(page2) # set colorbar to be first page
+    if sep_page: # set colorbar to be first page
+        output.addPage(page2)
         output.addPage(page1)
-    else: # merge the colo
+    else: # merge the colorbar
         h1 = page1.mediaBox.getHeight()
         w1 = page1.mediaBox.getWidth()
         h2 = page2.mediaBox.getHeight()
