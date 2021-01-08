@@ -8,7 +8,7 @@ const _WM = WaterModels
 const _IM = WaterModels._IM
 
 # importing only the viridis color scheme for now; might allow the color scheme to be
-# selected by the user at some point, in which case will need to import all of ColorShemes
+# selected by the user at some point, in which case will need to import all of ColorSchemes
 import ColorSchemes.viridis
 import ColorTypes.HSV
 import Memento
