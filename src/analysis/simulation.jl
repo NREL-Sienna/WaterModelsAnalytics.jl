@@ -15,7 +15,7 @@ end
 
 
 function _populate_wntr_hydraulic_options!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
-    wntr_network.options.hydraulic.headloss = uppercase(data["nw"]["1"]["head_loss"])
+    wntr_network.options.hydraulic.headloss = uppercase(data["head_loss"])
     wntr_network.options.hydraulic.trials = 100
     wntr_network.options.hydraulic.accuracy = 0.001
     wntr_network.options.hydraulic.unbalanced = "CONTINUE"
@@ -35,7 +35,7 @@ function _add_wntr_demands!(wntr_network::PyCall.PyObject, data::Dict{String, An
 
         # Prepare the demand head pattern array.
         network_ids = sort([parse(Int, nw) for (nw, nw_data) in data["nw"]])
-        pattern = [data["nw"][string(n)]["demand"][i]["flow_rate"] for n in network_ids]
+        pattern = [data["nw"][string(n)]["demand"][i]["flow_nominal"] for n in network_ids]
 
         # Add the demand flow rate pattern to the WNTR network.
         wntr_network.add_pattern("demand_pattern_" * node_id, pattern)
@@ -57,7 +57,7 @@ function _add_wntr_reservoirs!(wntr_network::PyCall.PyObject, data::Dict{String,
 
         # Prepare the reservoir head pattern array.
         network_ids = sort([parse(Int, nw) for (nw, nw_data) in data["nw"]])
-        pattern = [data["nw"][string(n)]["node"][node_id]["head"] for n in network_ids]
+        pattern = [data["nw"][string(n)]["node"][node_id]["head_nominal"] for n in network_ids]
 
         # Add the reservoir head pattern to the WNTR network.
         wntr_network.add_pattern("reservoir_pattern_" * node_id, pattern)
