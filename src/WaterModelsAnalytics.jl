@@ -72,7 +72,27 @@ export write_graph
 export colorbar
 export write_visualization
 
-export simulate
+# export simulate
+export _populate_wntr_time_options
+export _populate_wntr_hydraulic_options
+export _add_wntr_demands
+export _add_wntr_reservoirs
+export _add_wntr_tanks
+export _add_wntr_bare_nodes
+export _add_wntr_pipes
+export _add_wntr_pumps
+export _add_wntr_short_pipes
+export _add_wntr_valves
+export _clear_wntr_controls
+export _set_wntr_tank_level
+export _set_wntr_valve_controls
+export _set_wntr_pump_controls
+export initialize_wntr_network
+export _get_valve_statuses
+export update_wntr_controls
+export simulate_wntr
+
+
 export get_node_dataframe
 export get_tank_dataframe
 export get_pipe_dataframe
