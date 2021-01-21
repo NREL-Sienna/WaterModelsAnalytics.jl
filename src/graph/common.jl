@@ -3,7 +3,6 @@
 # - parse regulators, throttle control valves, others???
 # * for "epanet-data" objects, identify shutoff valves; might want to do that in
 #   WaterModels?
-# - use PyPDF2 to merge colorbar (will remove ghostscript dependency)
 
 
 
@@ -274,24 +273,26 @@ intermediate files.
 """
 function write_visualization(data::Dict{String,Any}, basefilename::String,
                              solution::Union{Nothing, Dict{String,Any}}=nothing;
-                             layout::String="dot", del_files::Bool=true)
+                             layout::String="dot", sep_page::Bool=false,
+                             del_files::Bool=true)
     # TODO:
-    # - pass through arguments to `write_graph`
+    # - pass through general graphviz arguments to `write_graph`
 
     #gvfile = basefilename*".gv"
-    pdffile = basefilename*".pdf"
+    gpdffile = basefilename*"_graph.pdf"
     cbfile = basefilename*"_cbar.pdf"
     outfile = basefilename*"_w_cb.pdf"
     
     G = build_graph(data, solution)
-    write_graph(G, pdffile, layout)
+    write_graph(G, gpdffile, layout)
     colorbar(G, cbfile)
 
-    # add option -dAutoRotatePages=/None ?
-    run(`gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile=$outfile $cbfile $pdffile`)
+    # note that `stack_bar` is a python function from `wntr_vis.py`
+    stack_cbar(gpdffile, cbfile, outfile, sep_page)
+    
     # delete the intermediate files
     if del_files
-        run(`rm $pdffile $cbfile`)
+        run(`rm $gpdffile $cbfile`)
     end
 end
 

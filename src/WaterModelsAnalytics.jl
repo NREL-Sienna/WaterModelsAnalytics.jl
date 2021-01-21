@@ -22,14 +22,14 @@ import Plots
 import DataFrames
 using LaTeXStrings
 
-# using PyPlot
-
 # Python imports.
 import PyCall
 import PyCall: PyObject, @pycall
 const pgv = PyCall.PyNULL()
 const wntr = PyCall.PyNULL()
 const wntrctrls = PyCall.PyNULL()
+const wntr_vis = PyCall.PyNULL()
+const stack_cbar = PyCall.PyNULL()
 
 # Create our module-level logger (this will get precompiled).
 const _LOGGER = Memento.getlogger(@__MODULE__)
@@ -38,11 +38,15 @@ function __init__()
     copy!(pgv, PyCall.pyimport("pygraphviz"))
     copy!(wntr, PyCall.pyimport("wntr"))
     copy!(wntrctrls, PyCall.pyimport("wntr.network.controls"))
+    copy!(wntr_vis, PyCall.pyimport("wntr_vis")) # this works! somehow it's in the path
+    copy!(stack_cbar, wntr_vis.stack_cbar)
+    
     # Register the module-level logger at runtime so users can access the logger via
     # `getlogger(WaterModelsAnalytics)` NOTE: If this line is not included, then the
     # precompiled `WaterModelsAnalytics._LOGGER` will not be registered at runtime.
     Memento.register(_LOGGER)
 end
+
 
 "Suppresses information and warning messages output by WaterModelsAnalytics. For more
         fine-grained control, use the Memento package."

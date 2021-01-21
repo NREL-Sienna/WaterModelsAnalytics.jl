@@ -249,7 +249,7 @@ def stack_cbar(graphfilename, cbfilename, outfilename, sep_page=False):
     have the colorbar on a separate page (faster processing for large graphs).
     """
     
-    # use PyPDF2 to merge the coloarbar
+    # use PyPDF2 to merge the colorbar
     input1 = PyPDF2.PdfFileReader(open(graphfilename, "rb"))
     input2 = PyPDF2.PdfFileReader(open(cbfilename, "rb"))
 
@@ -294,7 +294,9 @@ def write_visualization(wn, basefilename, time=1, wnsol=None, layout="dot",
     separate page (faster processing for large graphs). Use `del_files=False`
     to keep the intermediate files.
 
-    `time` is presumed to be integer hours; `wnsol` is currently ignored [TBD]
+    `time` is presumed to be integer hours
+
+    `wnsol`, if provided, should be a WNTR solution dict generated via `run.sim()` 
 
     """
     graphfile = basefilename + "_graph.pdf"
