@@ -3,7 +3,7 @@ Functions to create graph visualizations of WNTR networks
 """
 
 ## TODO:
-# - decide about adding gain/headloss to pumps/pipes
+# - [nothing at the moment, JJS 1/25/21]
 
 import numpy as np
 import wntr
@@ -186,8 +186,6 @@ def add_solution(wn, Gnx, wnsol, time):
             natts["label"] += "\nh: " + headval
         else:
             natts["label"] = node + "\nh: " + headval
-    # add flow to the link labels; also show gain/headloss? need to decide and make
-    # consistent with WM version, JJS 12/29/20
     link_results = wnsol.link
     flowrate = link_results["flowrate"]
     for link in Gnx.edges:

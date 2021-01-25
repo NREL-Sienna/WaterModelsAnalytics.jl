@@ -1,6 +1,5 @@
 # TODO:
-# - add keyword argument to choose whether to enable/disable showing indices?
-# - parse regulators, throttle control valves, others???
+# - use keyword argument to enable/disable showing indices?
 # * for "epanet-data" objects, identify shutoff valves; might want to do that in
 #   WaterModels?
 
@@ -8,7 +7,8 @@
 
 """
 Build pygraphviz graph object from a WaterModels network dictionary parsed from an EPANET
-file.
+file. If a `solution` dict is provided, it should be for the same time as that of the `data`
+dict.
 """
 function build_graph(data::Dict{String, <:Any},
                      solution::Union{Nothing, Dict{String, <:Any}} = nothing)
@@ -124,8 +124,10 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         
         if node_type == "reservoir"
             PyCall.set!(nodeobj.attr, "label", "Rsvr\n"*label)
+            PyCall.set!(nodeobj.attr, "shape", "diamond")
         elseif node_type == "tank"
             PyCall.set!(nodeobj.attr, "label", "Tank\n"*label)
+            PyCall.set!(nodeobj.attr, "shape", "rectangle")
         else
             dem = node["flow_nominal"] 
 
@@ -170,10 +172,18 @@ end
 function _add_pipe_to_graph!(graph::PyCall.PyObject, pipe::Dict{String, <:Any}, max_diameter::Float64)
     index, label = string(pipe["index"]), _get_comp_label(pipe)
     penwidth = pipe["diameter"] * inv(max_diameter) * 10.0
+    if penwidth > 8.0
+        pad = "  "
+    elseif penwidth > 4.0
+        pad = " "
+    else
+        pad = ""
+    end
     dir, arrowhead = _get_link_dir(pipe), _get_link_arrowhead(pipe)
     length = @sprintf("%.5g m", pipe["length"])
     graph.add_edge(pipe["node_fr"], pipe["node_to"], index, dir = dir, headclip = "true",
-        arrowhead = arrowhead, penwidth = penwidth, label = "$(label)\n$(length)")
+                   arrowhead = arrowhead, penwidth = penwidth,
+                   label = "$(pad)$(label)\n$(pad)$(length)")
 end
 
 
@@ -202,15 +212,20 @@ function _add_regulator_to_graph!(graph::PyCall.PyObject, regulator::Dict{String
     index, label = string(regulator["index"]), _get_comp_label(regulator)
     dir, arrowhead = _get_link_dir(regulator), _get_link_arrowhead(regulator)
     graph.add_edge(regulator["node_fr"], regulator["node_to"], index, dir = dir,
-        arrowhead = arrowhead, label = "Reg\n$(label)")
+        arrowhead = arrowhead, label = "Reg\n$(label)", color = "purple", style = "bold")
 end
 
 
 function _add_valve_to_graph!(graph::PyCall.PyObject, valve::Dict{String, <:Any})
     index, label = string(valve["index"]), _get_comp_label(valve)
     dir, arrowhead = _get_link_dir(valve), _get_link_arrowhead(valve)
+    if dir != "none"
+        label = "CV\n$(label)"
+    else
+        label = "SV\n$(label)"
+    end
     graph.add_edge(valve["node_fr"], valve["node_to"], index, dir = dir,
-        arrowhead = arrowhead, label = "Vlv\n$(label)", color = "blue", style = "bold")
+        arrowhead = arrowhead, label = label, color = "blue", style = "bold")
 end
 
 
@@ -227,9 +242,10 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
         PyCall.set!(nodeobj.attr, "label", label*"\nh: "*head)
     end
     # add flow to the labels for pipes and valves
-    pipesplus = ["pipe", "des_pipe", "pump", "regulator", "short_pipe", "valve"]
-
-    for linktype in pipesplus
+    # Byron added this set, but not all of these fields exist in the solution object
+    #pipesplus = ["pipe", "des_pipe", "pump", "regulator", "short_pipe", "valve"]
+    links = ["pump", "pipe", "valve"]
+    for linktype in links
         for (key,pipesol) in solution[linktype]
             flow = _val_string_cut(pipesol["q"], 1e-10)
             link = data[linktype][key]
@@ -238,19 +254,6 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
             label = get(edgeobj.attr, "label")
             PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow)
         end
-    end
-    # add flow and gain to the pump labels
-    ### remove the gain and only show flow?? if show gain for pumps, logically should show
-    ### headloss for the other links.... also, would only need one loop block if only show
-    ### flow, JJS 12/29/20
-    for (key,pumpsol) in solution["pump"]
-        flow = _val_string_cut(pumpsol["q"], 1e-10)
-        gain = _val_string_cut(pumpsol["g"], 1e-3)
-        pump = data["pump"][key]
-        # may also need to use `key` if multiple pumps between nodes 
-        edgeobj = @pycall G."get_edge"(pump["node_fr"], pump["node_to"])::PyObject 
-        label = get(edgeobj.attr, "label")
-        PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow*"\ng: "*gain)
     end
 end
 
@@ -269,7 +272,8 @@ Write out to a file a visualization for a WaterModels network dictionary parsed 
 EPANET file. `basefilename` should not include an extension and will be appended with
 `_w_cb.pdf` in the final output file, which is a multi-page PDF. The `layout` option equates
 to the layout functions of graphviz (dot, neato, etc.). Use `del_files=false` to keep the
-intermediate files.
+intermediate files. If a `solution` dict is provided, it should be for the same time as that
+of the `data` dict.
 """
 function write_visualization(data::Dict{String,Any}, basefilename::String,
                              solution::Union{Nothing, Dict{String,Any}}=nothing;
