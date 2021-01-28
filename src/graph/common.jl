@@ -1,5 +1,7 @@
 # TODO:
 # - use keyword argument to enable/disable showing indices?
+# - parse the "status" flag for every node and edge? needed for `des_pipes` (design
+#   problem); not sure of other use cases
 # * for "epanet-data" objects, identify shutoff valves; might want to do that in
 #   WaterModels?
 
