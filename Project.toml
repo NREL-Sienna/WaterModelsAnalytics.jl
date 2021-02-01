@@ -20,13 +20,12 @@ WaterModels = "7c60b362-08f4-5b14-8680-cd67a3e18348"
 [compat]
 ColorSchemes = "~3.9, ~3.10"
 ColorTypes = "~0.10"
-DataFrames = "~0.21"
-Interpolations = "~0.13"
+DataFrames = "~0.21, 0.22"
 LaTeXStrings = "~1.2"
-Memento = "~1.0, ~1.1"
-Plots = "~1.4"
+Memento = "~1.0, 1.1"
+Plots = "~1"
 PyCall = "~1.91, ~1.92"
-WaterModels = "~0.5, ~0.6"
+WaterModels = "~0.6"
 julia = "^1"
 
 [extras]

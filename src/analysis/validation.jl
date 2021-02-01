@@ -17,9 +17,9 @@ end
 
 
 # compare nodes
-function get_node_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, node_id)
+function get_node_dataframe(wm_data, wm_solution, wntr_data, wntr_simulation, node_id)
     num_time_step = length(wm_solution["solution"]["nw"])            # number of time steps
-    time_step = wm_data["time_step"]/3600                            # length per time step (hour)
+    time_step = wm_data["time_step"] / 3600.0                        # length per time step (hour)
     node_name = node_id
 
     head_wntr = _get_wntr_node_attribute(wntr_simulation, node_name, "head")
