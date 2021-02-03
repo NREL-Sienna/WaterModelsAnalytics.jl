@@ -34,17 +34,37 @@ const stack_cbar = PyCall.PyNULL()
 # Create our module-level logger (this will get precompiled).
 const _LOGGER = Memento.getlogger(@__MODULE__)
 
+
 function __init__()
-    copy!(pgv, PyCall.pyimport("pygraphviz"))
-    copy!(wntr, PyCall.pyimport("wntr"))
-    copy!(wntrctrls, PyCall.pyimport("wntr.network.controls"))
-    copy!(wntr_vis, PyCall.pyimport("wntr_vis")) # this works! somehow it's in the path
-    copy!(stack_cbar, wntr_vis.stack_cbar)
-    
     # Register the module-level logger at runtime so users can access the logger via
     # `getlogger(WaterModelsAnalytics)` NOTE: If this line is not included, then the
     # precompiled `WaterModelsAnalytics._LOGGER` will not be registered at runtime.
     Memento.register(_LOGGER)
+
+    try
+        # Import WNTR-related components.
+        PyCall.pyimport("wntr")
+        copy!(wntr, PyCall.pyimport("wntr"))
+        copy!(wntrctrls, PyCall.pyimport("wntr.network.controls"))
+        wntr_vis_path = joinpath(dirname(pathof(@__MODULE__)), "python")
+
+        PyCall.py"""
+        import sys; sys.path.insert(0, $(wntr_vis_path))
+        """
+
+        copy!(wntr_vis, PyCall.pyimport("wntr_vis"))
+        copy!(stack_cbar, wntr_vis.stack_cbar)
+    catch
+        error("Python installation is missing the \"wntr\" module.")
+    end
+
+    try
+        # Import pygraphviz-related components.
+        PyCall.pyimport("pygraphviz")
+        copy!(pgv, PyCall.pyimport("pygraphviz"))
+    catch
+        error("Python installation is missing the \"pygraphviz\" module.")
+    end
 end
 
 
@@ -58,10 +78,12 @@ function silence()
     Memento.setlevel!(Memento.getlogger(_WM), "error")
 end
 
+
 "Allows the user to set the logging level without the need to add Memento."
 function logger_config!(level)
     Memento.config!(Memento.getlogger("WaterModelsAnalytics"), level)
 end
+
 
 include("analysis/utility.jl")
 include("analysis/simulation.jl")
