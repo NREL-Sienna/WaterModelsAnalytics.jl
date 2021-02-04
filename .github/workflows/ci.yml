@@ -23,6 +23,15 @@ jobs:
         arch:
           - x64
     steps:
+      - name: Install Dependencies (Linux)
+        run: sudo apt-get update && sudo apt-get install -y graphviz graphviz-dev
+        if: matrix.os == 'ubuntu-latest'
+      - name: Install Dependencies (macOS)
+        run: brew install graphviz
+        if: matrix.os == 'macOS-latest'
+      - name: Install Dependencies (Windows)
+        run: choco install graphviz
+        if: matrix.os == 'windows-latest'
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
