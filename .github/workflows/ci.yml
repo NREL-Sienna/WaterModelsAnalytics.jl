@@ -24,10 +24,10 @@ jobs:
           - x64
     steps:
       - name: Install Dependencies (Linux)
-        run: sudo apt-get update && sudo apt-get install -y graphviz graphviz-dev
+        run: sudo apt-get update && sudo apt-get install -y graphviz graphviz-dev qt5-default
         if: matrix.os == 'ubuntu-latest'
       - name: Install Dependencies (macOS)
-        run: brew install graphviz
+        run: brew install graphviz qt5
         if: matrix.os == 'macOS-latest'
       - name: Install Dependencies (Windows)
         run: choco install graphviz
