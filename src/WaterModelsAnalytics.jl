@@ -36,6 +36,13 @@ const _LOGGER = Memento.getlogger(@__MODULE__)
 
 
 function __init__()
+    # alert about warnings generated during the build of the package (warnings are not shown
+    # in the REPL)
+    _build_log = joinpath(dirname(dirname(@__FILE__)), "deps", "build.log")
+    if occursin("Warning:", read(_build_log, String))
+        @warn("Warnings were generated during the last build of WaterModelsAnalytics.jl:  please check the build log at $_build_log")
+    end    
+    
     # Register the module-level logger at runtime so users can access the logger via
     # `getlogger(WaterModelsAnalytics)` NOTE: If this line is not included, then the
     # precompiled `WaterModelsAnalytics._LOGGER` will not be registered at runtime.

@@ -332,6 +332,8 @@ function colorbar(G::PyCall.PyObject, filename::String)
     x = reshape(collect(range(0.0, stop=1.0, length=100)), (1,:))
     Plots.heatmap(x, c=:viridis, size=(500,100), legend=:none, yaxis=false)
     Plots.plot!(xticks=(0:50:100, [elmin, elmid, elmax]))
+    Plots.plot!(yticks=false) # a regression requires this for GR, JJS 1/4/21,
+                              # https://github.com/JuliaPlots/Plots.jl/issues/3019
     Plots.title!("Elevation")
     Plots.savefig(filename)
 end
