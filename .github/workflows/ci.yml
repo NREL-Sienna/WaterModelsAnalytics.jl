@@ -34,7 +34,7 @@ jobs:
       - name: Install Dependencies (Windows)
         run: choco install graphviz
         env:
-          PYTHON: "C:\hostedtoolcache\windows\Python"
+          PYTHON: "C:\\hostedtoolcache\\windows\\Python"
         if: matrix.os == 'windows-latest'
       - name: Install PyGraphviz (Windows)
         run: python -m pip install --global-option=build_ext \
