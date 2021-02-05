@@ -32,10 +32,14 @@ jobs:
         run: brew install graphviz qt5
         if: matrix.os == 'macOS-latest'
       - name: Install Dependencies (Windows)
-        run: choco install python graphviz
+        run: choco install graphviz
+        env:
+          PYTHON: "C:\\hostedtoolcache\\windows\\Python"
         if: matrix.os == 'windows-latest'
       - name: Install PyGraphviz (Windows)
-        run: python -m pip install --global-option=build_ext --global-option="-IC:\\Program Files\\Graphviz\\include" --global-option="-LC:\\Program Files\\Graphviz\\lib" pygraphviz
+        run: python -m pip install --global-option=build_ext \
+             --global-option="-IC:\\Program Files\\Graphviz\\include" \
+             --global-option="-LC:\\Program Files\\Graphviz\\lib" pygraphviz
         if: matrix.os == 'windows-latest'
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
