@@ -335,5 +335,6 @@ function colorbar(G::PyCall.PyObject, filename::String)
     Plots.plot!(yticks=false) # a regression requires this for GR, JJS 1/4/21,
                               # https://github.com/JuliaPlots/Plots.jl/issues/3019
     Plots.title!("Elevation")
+    println(filename)
     Plots.savefig(filename)
 end

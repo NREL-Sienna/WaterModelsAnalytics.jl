@@ -7,7 +7,7 @@ on:
 jobs:
   test:
     env:
-      GKS_WSTYPE: 100
+      GKS_WSTYPE: 102
     if: "!contains(github.event.head_commit.message, 'skip ci')"
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
