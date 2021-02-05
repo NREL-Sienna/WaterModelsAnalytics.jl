@@ -287,7 +287,7 @@ function write_visualization(data::Dict{String,Any}, basefilename::String,
     #gvfile = basefilename*".gv"
     gpdffile = basefilename*"_graph.pdf"
     cbfile = basefilename*"_cbar.pdf"
-    outfile = basefilename*"_w_cb.pdf"
+    outfile = basefilename*"_graph_w_cb.pdf"
     
     G = build_graph(data, solution)
     write_graph(G, gpdffile, layout)

@@ -28,5 +28,5 @@ basepath = dirname(dirname(pathof(WaterModels)))
 data = WM.parse_file(joinpath(basepath, "test/data/epanet/van_zyl.inp"))
 IM.load_timepoint!(data, 1)
 
-WMA.write_visualization(data, "wm_graph")
+WMA.write_visualization(data, "van_zyl_wm")
 ```
