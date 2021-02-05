@@ -6,6 +6,6 @@
         @test isfile("$(tmp_directory)/van_zyl_graph.pdf")
         @test isfile("$(tmp_directory)/van_zyl_cbar.pdf")
         @test isfile("$(tmp_directory)/van_zyl_w_cb.pdf")
-        rm(tmppth, recursive = true)
+        rm(tmp_directory, recursive = true)
     end
 end
