@@ -14,3 +14,6 @@ docs/.documenter
 # backup files
 *~
 *.bak
+
+*.log
+__pycache__

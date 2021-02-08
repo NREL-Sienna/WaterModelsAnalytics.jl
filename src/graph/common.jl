@@ -287,7 +287,7 @@ function write_visualization(data::Dict{String,Any}, basefilename::String,
     #gvfile = basefilename*".gv"
     gpdffile = basefilename*"_graph.pdf"
     cbfile = basefilename*"_cbar.pdf"
-    outfile = basefilename*"_w_cb.pdf"
+    outfile = basefilename*"_graph_w_cb.pdf"
     
     G = build_graph(data, solution)
     write_graph(G, gpdffile, layout)
@@ -332,6 +332,8 @@ function colorbar(G::PyCall.PyObject, filename::String)
     x = reshape(collect(range(0.0, stop=1.0, length=100)), (1,:))
     Plots.heatmap(x, c=:viridis, size=(500,100), legend=:none, yaxis=false)
     Plots.plot!(xticks=(0:50:100, [elmin, elmid, elmax]))
+    Plots.plot!(yticks=false) # a regression requires this for GR, JJS 1/4/21,
+                              # https://github.com/JuliaPlots/Plots.jl/issues/3019
     Plots.title!("Elevation")
     Plots.savefig(filename)
 end
