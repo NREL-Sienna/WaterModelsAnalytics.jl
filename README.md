@@ -1,5 +1,6 @@
 # WaterModelsAnalytics.jl
-<a href="https://travis-ci.org/NREL-SIIP/WaterModelsAnalytics.jl"><img src="https://travis-ci.org/NREL-SIIP/WaterModelsAnalytics.jl.svg?branch=master" align="top" alt="Development Build Status"></a> <a href="https://codecov.io/gh/NREL-SIIP/WaterModelsAnalytics.jl"><img align="top" src="https://codecov.io/gh/NREL-SIIP/WaterModelsAnalytics.jl/branch/master/graph/badge.svg" alt="Code Coverage Status"></a>
+[![Build Status](https://github.com/NREL-SIIP/WaterModelsAnalytics.jl/workflows/CI/badge.svg?branch=master)](https://github.com/NREL-SIIP/WaterModelsAnalytics.jl/actions?query=workflow%3ACI)
+[![codecov](https://codecov.io/gh/NREL-SIIP/WaterModelsAnalytics.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/NREL-SIIP/WaterModelsAnalytics.jl)
 
 WaterModelsAnalytics.jl is a Julia package to to support WaterModels.jl (and
 possibly WaterSystems.jl) with visualizations and solution validations. Current functionality includes:
