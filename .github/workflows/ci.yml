@@ -21,7 +21,7 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-          - windows-latest
+          # - windows-latest
         arch:
           - x64
     steps:
@@ -33,6 +33,13 @@ jobs:
         if: matrix.os == 'macOS-latest'
       - name: Install Dependencies (Windows)
         run: choco install graphviz
+        env:
+          PYTHON: "C:\hostedtoolcache\windows\Python"
+        if: matrix.os == 'windows-latest'
+      - name: Install PyGraphviz (Windows)
+        run: python -m pip install --global-option=build_ext \
+             --global-option="-IC:\Program Files\Graphviz\include" \
+             --global-option="-LC:\Program Files\Graphviz\lib" pygraphviz
         if: matrix.os == 'windows-latest'
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
