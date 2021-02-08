@@ -5,7 +5,7 @@
         write_visualization(data, joinpath(tmp_directory, "van_zyl"), del_files = false)
         @test isfile(joinpath(tmp_directory, "van_zyl_graph.pdf"))
         @test isfile(joinpath(tmp_directory, "van_zyl_cbar.pdf"))
-        @test isfile(joinpath(tmp_directory, "van_zyl_w_cb.pdf"))
+        @test isfile(joinpath(tmp_directory, "van_zyl_graph_w_cb.pdf"))
         rm(tmp_directory, recursive = true)
     end
 end
