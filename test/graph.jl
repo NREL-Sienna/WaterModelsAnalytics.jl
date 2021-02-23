@@ -1,11 +1,11 @@
 @testset "src/graph/common.jl" begin
-    @testset "build_graph" begin
+    @testset "write_visualization" begin
         data = _WM.parse_file("$(wm_path)/examples/data/epanet/van_zyl.inp")
-        tmppth = mktempdir()
-        write_visualization(data, "$(tmppth)/van_zyl_graph", del_files=false)
-        @test isfile("$(tmppth)/van_zyl_graph.pdf")
-        @test isfile("$(tmppth)/van_zyl_graph_cbar.pdf")
-        @test isfile("$(tmppth)/van_zyl_graph_w_cb.pdf")
-        rm(tmppth, recursive=true)
+        tmp_directory = mktempdir()
+        write_visualization(data, joinpath(tmp_directory, "van_zyl"), del_files = false)
+        @test isfile(joinpath(tmp_directory, "van_zyl_graph.pdf"))
+        @test isfile(joinpath(tmp_directory, "van_zyl_cbar.pdf"))
+        @test isfile(joinpath(tmp_directory, "van_zyl_graph_w_cb.pdf"))
+        rm(tmp_directory, recursive = true)
     end
 end

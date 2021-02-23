@@ -3,7 +3,7 @@ Functions to create graph visualizations of WNTR networks
 """
 
 ## TODO:
-# - decide about adding gain/headloss to pumps/pipes
+# - [nothing at the moment, JJS 1/25/21]
 
 import numpy as np
 import wntr
@@ -186,8 +186,6 @@ def add_solution(wn, Gnx, wnsol, time):
             natts["label"] += "\nh: " + headval
         else:
             natts["label"] = node + "\nh: " + headval
-    # add flow to the link labels; also show gain/headloss? need to decide and make
-    # consistent with WM version, JJS 12/29/20
     link_results = wnsol.link
     flowrate = link_results["flowrate"]
     for link in Gnx.edges:
@@ -249,7 +247,7 @@ def stack_cbar(graphfilename, cbfilename, outfilename, sep_page=False):
     have the colorbar on a separate page (faster processing for large graphs).
     """
     
-    # use PyPDF2 to merge the coloarbar
+    # use PyPDF2 to merge the colorbar
     input1 = PyPDF2.PdfFileReader(open(graphfilename, "rb"))
     input2 = PyPDF2.PdfFileReader(open(cbfilename, "rb"))
 
@@ -294,7 +292,9 @@ def write_visualization(wn, basefilename, time=1, wnsol=None, layout="dot",
     separate page (faster processing for large graphs). Use `del_files=False`
     to keep the intermediate files.
 
-    `time` is presumed to be integer hours; `wnsol` is currently ignored [TBD]
+    `time` is presumed to be integer hours
+
+    `wnsol`, if provided, should be a WNTR solution dict generated via `run.sim()` 
 
     """
     graphfile = basefilename + "_graph.pdf"

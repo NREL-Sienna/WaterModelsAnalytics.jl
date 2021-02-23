@@ -203,9 +203,10 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
         elseif wntr_data.options.energy.global_efficiency != nothing
             eff = wntr_data.options.energy.global_efficiency/100 # e.g. convert 60 to 60% (0.6)
         else
-            println("No pump efficiency provided, 75% is used")
+            Memento.info(_LOGGER, "No pump efficiency provided, 75% is used")
             eff = 0.75
         end
+
         power = _WM._GRAVITY * _WM._DENSITY * dh * q / eff # Watt
         return power
     end
