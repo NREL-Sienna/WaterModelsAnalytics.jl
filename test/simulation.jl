@@ -43,6 +43,18 @@ using PyCall
 	wntr_result = simulate_wntr(wntr_network)
 
 	
+	## Check if the time parameters are specified correctly
+	@test check_difference(data["duration"], wntr_network.options.time.duration, tol)
+	@test check_difference(data["time_step"], wntr_network.options.time.hydraulic_timestep, tol)
+	@test check_difference(data["time_step"], wntr_network.options.time.quality_timestep, tol)
+	@test check_difference(data["time_step"], wntr_network.options.time.rule_timestep, tol)
+	@test check_difference(data["time_step"], wntr_network.options.time.pattern_timestep, tol)
+	@test check_difference(data["time_step"], wntr_network.options.time.report_timestep, tol)
+	@test check_difference(0, wntr_network.options.time.pattern_start, tol)
+	@test check_difference(0, wntr_network.options.time.report_start, tol)
+	@test check_difference(0, wntr_network.options.time.start_clocktime, tol)
+
+
 
 	## Check if demands are specified correctly
 	for (i, demand) in data["nw"]["1"]["demand"]
