@@ -98,7 +98,10 @@ include("analysis/simulation.jl")
 include("analysis/validation.jl")
 include("analysis/visualization.jl")
 include("analysis/pump_bep.jl")
-include("graph/common.jl")
+
+include("graph/graph.jl")
+include("graph/output.jl")
+
 include("plots/pumps.jl")
 
 export build_graph
