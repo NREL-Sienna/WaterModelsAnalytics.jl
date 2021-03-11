@@ -40,7 +40,7 @@ function build_graph(data::Dict{String, <:Any},
     if solution !== nothing
         add_solution!(G, data, solution)
     end
-    
+
     return G
 end # function build_graph
 
@@ -127,10 +127,10 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
         node_type = node["source_id"][1]
         
         if node_type == "reservoir"
-            PyCall.set!(nodeobj.attr, "label", "Rsvr\n"*label)
+            PyCall.set!(nodeobj.attr, "label", "Rsvr\\n"*label)
             PyCall.set!(nodeobj.attr, "shape", "diamond")
         elseif node_type == "tank"
-            PyCall.set!(nodeobj.attr, "label", "Tank\n"*label)
+            PyCall.set!(nodeobj.attr, "label", "Tank\\n"*label)
             PyCall.set!(nodeobj.attr, "shape", "rectangle")
         else
             dem = node["flow_nominal"] 
@@ -139,7 +139,7 @@ function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
                 PyCall.set!(nodeobj.attr, "label", label)
             else
                 dem = @sprintf("%2.2g", dem)
-                PyCall.set!(nodeobj.attr, "label", label*"\nd: "*dem)
+                PyCall.set!(nodeobj.attr, "label", label*"\\nd: "*dem)
             end
         end
     end
@@ -187,7 +187,7 @@ function _add_pipe_to_graph!(graph::PyCall.PyObject, pipe::Dict{String, <:Any}, 
     length = @sprintf("%.5g m", pipe["length"])
     graph.add_edge(pipe["node_fr"], pipe["node_to"], index, dir = dir, headclip = "true",
                    arrowhead = arrowhead, penwidth = penwidth,
-                   label = "$(pad)$(label)\n$(pad)$(length)")
+                   label = "$(pad)$(label)\\n$(pad)$(length)")
 end
 
 
@@ -208,7 +208,7 @@ function _add_pump_to_graph!(graph::PyCall.PyObject, pump::Dict{String, <:Any})
     index, label = string(pump["index"]), _get_comp_label(pump)
     dir, arrowhead = _get_link_dir(pump), _get_link_arrowhead(pump)
     graph.add_edge(pump["node_fr"], pump["node_to"], index, dir = dir,
-        arrowhead = arrowhead, label = "Pmp\n$(label)", color = "red", style = "bold")
+        arrowhead = arrowhead, label = "Pmp\\n$(label)", color = "red", style = "bold")
 end
 
 
@@ -216,7 +216,7 @@ function _add_regulator_to_graph!(graph::PyCall.PyObject, regulator::Dict{String
     index, label = string(regulator["index"]), _get_comp_label(regulator)
     dir, arrowhead = _get_link_dir(regulator), _get_link_arrowhead(regulator)
     graph.add_edge(regulator["node_fr"], regulator["node_to"], index, dir = dir,
-        arrowhead = arrowhead, label = "Reg\n$(label)", color = "purple", style = "bold")
+        arrowhead = arrowhead, label = "Reg\\n$(label)", color = "purple", style = "bold")
 end
 
 
@@ -224,9 +224,9 @@ function _add_valve_to_graph!(graph::PyCall.PyObject, valve::Dict{String, <:Any}
     index, label = string(valve["index"]), _get_comp_label(valve)
     dir, arrowhead = _get_link_dir(valve), _get_link_arrowhead(valve)
     if dir != "none"
-        label = "CV\n$(label)"
+        label = "CV\\n$(label)"
     else
-        label = "SV\n$(label)"
+        label = "SV\\n$(label)"
     end
     graph.add_edge(valve["node_fr"], valve["node_to"], index, dir = dir,
         arrowhead = arrowhead, label = label, color = "blue", style = "bold")
@@ -243,7 +243,7 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
         head = @sprintf("%2.2g", node["h"])
         nodeobj = @pycall G."get_node"(key)::PyObject
         label = get(nodeobj.attr, "label")
-        PyCall.set!(nodeobj.attr, "label", label*"\nh: "*head)
+        PyCall.set!(nodeobj.attr, "label", label*"\\nh: "*head)
     end
     # add flow to the labels for pipes and valves
     # Byron added this set, but not all of these fields exist in the solution object
@@ -256,7 +256,7 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
             # may also need to use `key` if multiple pipes between nodes 
             edgeobj = @pycall G."get_edge"(link["node_fr"], link["node_to"])::PyObject 
             label = get(edgeobj.attr, "label")
-            PyCall.set!(edgeobj.attr, "label", label*"\nq: "*flow)
+            PyCall.set!(edgeobj.attr, "label", label*"\\nq: "*flow)
         end
     end
 end
