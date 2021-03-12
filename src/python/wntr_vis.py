@@ -281,6 +281,22 @@ def stack_cbar(graphfilename, cbfilename, outfilename, sep_page=False):
     return
 
 
+def collate_viz(filenames, outfilename):
+    """
+    Collate the pages of a multi-time visualization. 
+    """
+    output = PyPDF2.PdfFileWriter()
+    for filename in filenames:
+        inpdf = PyPDF2.PdfFileReader(open(filename, "rb"))
+        page = inpdf.getPage(0)
+        output.addPage(page)
+
+    outfile = open(outfilename, "wb")
+    output.write(outfile)
+    outfile.close()
+    return
+    
+
 def write_visualization(wn, basefilename, time=1, wnsol=None, layout="dot",
                         sep_page=False, del_files=True):
     """

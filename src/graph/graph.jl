@@ -10,10 +10,13 @@
 """
 Build pygraphviz graph object from a WaterModels network dictionary parsed from an EPANET
 file. If a `solution` dict is provided, it should be for the same time as that of the `data`
-dict.
+dict. The `layout` option equates to the layout functions of graphviz (dot, neato, etc.) and
+any provided `args` will also be passed to graphviz. Provide `layout=neato` and `args=-n` to
+use the provided graph coordinates for the layout.
 """
 function build_graph(data::Dict{String, <:Any},
-                     solution::Union{Nothing, Dict{String, <:Any}} = nothing)
+                     solution::Union{Nothing, Dict{String, <:Any}} = nothing;
+                     layout::String="dot", args::String="")
     # presumes input is data dict from WaterModels.parse_file() OR WaterModels.parse_epanet()
 
     # TODO:
@@ -41,8 +44,58 @@ function build_graph(data::Dict{String, <:Any},
         add_solution!(G, data, solution)
     end
 
+    # set the layout here--can be reused for displaying different solutions
+    try
+        G.layout(prog=layout, args=(args))
+    catch
+        G.layout(prog="dot")
+        # by putting this warning after, it should display only if `G.draw()` was actually
+        # successful using "dot"; if it fails for another reason, that error should be shown
+        @warn "$layout $args is not supported; dot without args was used instead"
+    end
+    # save the layout information for the user to inspect later
+    PyCall.set!(G."graph_attr", "layout_args", "$layout $args")
+    # get(G.graph_attr, "layout_args") # this is how to inspect
+    
     return G
 end # function build_graph
+
+
+"""
+Update a graph for a different time. Updates reservoir elevation (aka head), demands, and
+solution information (if provided). 
+"""
+function update_graph!(G::PyCall.PyObject, data::Dict{String,Any},
+                       solution::Union{Nothing, Dict{String, <:Any}} = nothing)
+    # TODO:
+    # - check that reservoir elevation actually changes for a network that has a reservoir
+    #   pattern
+    # - check that there aren't any other time-dependent information to update
+
+    # update reservoir elevation
+    for (key, res) in data["reservoir"]
+        nodekey = string(res["node"])
+        node = data["node"][nodekey]
+        nodeobj = @pycall G."get_node"(nodekey)::PyObject
+        # Color according to the node's elevation.
+        elmin = parse(Float64, get(G.graph_attr, "elmin", 0.0))
+        elmax = parse(Float64, get(G.graph_attr, "elmax", 1.0))
+        clr = HSV(get(viridis, node["elevation"], (elmin, elmax)))
+        clrstr = string(clr.h / 360) * " " * string(clr.s) * " " * string(clr.v)
+        fntclr = clr.v < 0.6 ? "white" : "black"
+        PyCall.set!(nodeobj.attr, "fillcolor", clrstr)
+        PyCall.set!(nodeobj.attr, "fontcolor", fntclr)
+    end
+    
+    # update demands
+    node_labels!(G, data["demand"])
+    
+    # update solution
+    if solution !== nothing
+        add_solution!(G, data, solution) 
+    end
+end
+    
 
 """
 Add nodes to the pygraphviz graph object, including node attributes for name label,
@@ -65,7 +118,8 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
 
     # scale to use to achieve "good" relative positioning with graphviz output --
     # calculate this systematically from the number of nodes?
-    scale = 20.0
+    #scale = 20.0 # works with exclamation points as part of `pos` argument
+    scale = 2e3 # no `!` but `-n` flag
     
     # add elmin and elmax as graph attributes for use in creating a colorbar in
     # colorbar (or via write_visualization)
@@ -185,8 +239,9 @@ function _add_pipe_to_graph!(graph::PyCall.PyObject, pipe::Dict{String, <:Any}, 
     end
     dir, arrowhead = _get_link_dir(pipe), _get_link_arrowhead(pipe)
     length = @sprintf("%.5g m", pipe["length"])
+    # save `pad` for use with adding solution labels
     graph.add_edge(pipe["node_fr"], pipe["node_to"], index, dir = dir, headclip = "true",
-                   arrowhead = arrowhead, penwidth = penwidth,
+                   arrowhead = arrowhead, penwidth = penwidth, pad = pad,
                    label = "$(pad)$(label)\\n$(pad)$(length)")
 end
 
@@ -243,12 +298,20 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
         head = @sprintf("%2.2g", node["h"])
         nodeobj = @pycall G."get_node"(key)::PyObject
         label = get(nodeobj.attr, "label")
+        # remove existing solution string (if it exists)
+        idx = findlast("\\n", label)
+        if idx != nothing
+            idx = idx[1]
+            if contains(label[idx:end], "h:")
+                label = label[1:idx-1]
+            end
+        end
         PyCall.set!(nodeobj.attr, "label", label*"\\nh: "*head)
     end
     # add flow to the labels for pipes and valves
     # Byron added this set, but not all of these fields exist in the solution object
     #pipesplus = ["pipe", "des_pipe", "pump", "regulator", "short_pipe", "valve"]
-    links = ["pump", "pipe", "valve"]
+    links = ["pump", "pipe", "short_pipe", "valve"]
     for linktype in links
         for (key,pipesol) in solution[linktype]
             flow = _val_string_cut(pipesol["q"], 1e-10)
@@ -256,7 +319,16 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
             # may also need to use `key` if multiple pipes between nodes 
             edgeobj = @pycall G."get_edge"(link["node_fr"], link["node_to"])::PyObject 
             label = get(edgeobj.attr, "label")
-            PyCall.set!(edgeobj.attr, "label", label*"\\nq: "*flow)
+            # remove existing solution string (if it exists)
+            idx = findlast("\\n", label)
+            if idx != nothing
+                idx = idx[1]
+                if contains(label[idx:end], "q:")
+                    label = label[1:idx-1]
+                end
+            end
+            pad = get(edgeobj.attr, "pad")
+            PyCall.set!(edgeobj.attr, "label", label*"\\n$(pad)q: "*flow)
         end
     end
 end

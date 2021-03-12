@@ -9,18 +9,15 @@ of the `data` dict.
 """
 function write_visualization(data::Dict{String,Any}, basefilename::String,
                              solution::Union{Nothing, Dict{String,Any}}=nothing;
-                             layout::String="dot", sep_page::Bool=false,
-                             del_files::Bool=true)
-    # TODO:
-    # - pass through general graphviz arguments to `write_graph`
+                             layout::String="dot", args::String="",
+                             sep_page::Bool=false, del_files::Bool=true)
 
-    #gvfile = basefilename*".gv"
     gpdffile = basefilename*"_graph.pdf"
     cbfile = basefilename*"_cbar.pdf"
     outfile = basefilename*"_graph_w_cb.pdf"
     
-    G = build_graph(data, solution)
-    write_graph(G, gpdffile, layout)
+    G = build_graph(data, solution, layout=layout, args=args)
+    write_graph(G, gpdffile)
     colorbar(G, cbfile)
 
     # note that `stack_bar` is a python function from `wntr_vis.py`
@@ -33,21 +30,81 @@ function write_visualization(data::Dict{String,Any}, basefilename::String,
 end
 
 
+""" 
+Create a visualizations for each time. `wmdata` and `solution` are multi-time WM data
+objects.
 """
-Use graphviz (via pygraphviz) to output a visualization to a file for a graph. The
-`layout` option equates to the layout functions of graphviz (dot, neato, etc.).
+function write_multi_time_viz(wmdata::Dict{String,Any}, solution::Dict{String,Any},
+                              basefilename::String; layout::String="dot", args::String="",
+                              del_files::Bool=true)
+    cbfile = basefilename*"_cbar.pdf"
+    outfile = basefilename*"_graph_w_cb.pdf"
+    
+    duration = wmdata["duration"]/3600
+    step = wmdata["time_step"]/3600
+    tarr = collect(range(1, stop=duration, step=step))  
+    tarr = string.(Int.(tarr))
+    N = length(tarr)
+
+    k = 0
+    filenames = Array{String,1}(undef, N+1)
+    filenames[k+=1] = cbfile
+    
+    # build graph at t = 1
+    t = tarr[1]
+    G = build_graph(wmdata["nw"][t], solution["nw"][t], layout=layout, args=args)
+    filename = "$(basefilename)_$(t)_graph.pdf"
+    write_graph(G, filename)
+    filenames[k+=1] = filename
+    
+    # loop over remaining timepoints
+    for t in tarr[2:end]
+        update_graph!(G, wmdata["nw"][t], solution["nw"][t])
+        filename = "$(basefilename)_$(t)_graph.pdf"
+        write_graph(G, filename)
+        filenames[k+=1] = filename
+    end
+
+    colorbar(G, cbfile)
+
+    # collate the pages
+    collate_viz(filenames, outfile)
+
+    # delete files
+    if del_files
+        for filename in filenames
+            run(`rm $filename`)
+        end
+    end
+end
+
+
 """
-function write_graph(G::PyCall.PyObject, filename::String, layout::String="dot",
-                     args::String="")
-    # TODO:
-    # - allow other arguments to be passed through to graphviz; how does pygraphviz handle passing of an empty string?
-    try
-        G.draw(filename, prog=layout)
-    catch
-        G.draw(filename, prog="dot")
-        # by putting this warning after, it should display only if `G.draw()` was actually
-        # successful using "dot"; if it fails for another reason, that error should be shown
-        @warn "$layout is not a supported layout; dot was used instead"
+Use graphviz (via pygraphviz) to output a visualization to a file for a graph.
+
+The layout may be redone here but will add computational cost. Note that absolute coordinate
+layouts (`neato -n` will likely not work here as the coordinates were overwritten during the
+call to `build_graph`.
+"""
+function write_graph(G::PyCall.PyObject, filename::String,
+                     layout::Union{Nothing, Dict{String, <:Any}} = nothing,
+                     args::Union{Nothing, Dict{String, <:Any}} = nothing)
+    
+    if layout == nothing
+        G.draw(filename) # uses layout that was already created in `build_graph`
+        if args != nothing
+            @warn "args are ignored if a layout is not given"
+        end
+    else
+        try
+            G.draw(filename, prog=layout)
+        catch
+            G.draw(filename, prog="dot")
+            # by putting this warning after, it should display only if `G.draw()` was
+            # actually successful using "dot"; if it fails for another reason, that error
+            # should be shown
+            @warn "$layout is not a supported layout; dot was used instead"
+        end
     end
 end
 
