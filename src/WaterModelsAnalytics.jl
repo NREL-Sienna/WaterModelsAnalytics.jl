@@ -30,6 +30,7 @@ const wntr = PyCall.PyNULL()
 const wntrctrls = PyCall.PyNULL()
 const wntr_vis = PyCall.PyNULL()
 const stack_cbar = PyCall.PyNULL()
+const collate_viz = PyCall.PyNULL()
 
 # Create our module-level logger (this will get precompiled).
 const _LOGGER = Memento.getlogger(@__MODULE__)
@@ -62,6 +63,7 @@ function __init__()
 
         copy!(wntr_vis, PyCall.pyimport("wntr_vis"))
         copy!(stack_cbar, wntr_vis.stack_cbar)
+        copy!(collate_viz, wntr_vis.collate_viz)
     catch
         error("Python installation is missing the \"wntr\" module.")
     end
@@ -98,7 +100,10 @@ include("analysis/simulation.jl")
 include("analysis/validation.jl")
 include("analysis/visualization.jl")
 include("analysis/pump_bep.jl")
-include("graph/common.jl")
+
+include("graph/graph.jl")
+include("graph/output.jl")
+
 include("plots/pumps.jl")
 
 export build_graph
