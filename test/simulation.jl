@@ -7,6 +7,7 @@ using PyCall
 
 @testset "src/analysis/simulation.jl" begin
 
+
 	## input the tolerance for mismatch
 	tol = 1e-2
 	function check_difference(a,b,tol)
@@ -33,6 +34,7 @@ using PyCall
 	# result = run_mn_owf(network_mn, PWLRDWaterModel, gurobi_2; ext = ext)
 
 	result = JSON.parsefile("../test/data/json/Richmond_skeleton_sol.json"; dicttype=Dict, inttype=Int64, use_mmap=true)
+
 
 	# ---------------------------------------------------------------------#
 	# ------------------------- run unit tests ----------------------------#
@@ -177,10 +179,16 @@ using PyCall
             @test valve["minor_loss"] == wntr_network.links._data[valve_id].minor_loss
             @test (string(valve["flow_direction"]) == "POSITIVE") ==  wntr_network.links._data[valve_id].cv
             
-            # check valve controls
-            for t in network_ids
-            	@test check_difference(solution["nw"][string(t)]["valve"][string(valve["index"])]["status"], wntr_result.link["status"][valve_id].values[t], tol)
-            end
+            # check valve controls - do not check passive valves
+        	if wntr_network.links._data[valve_id].cv == true
+        		continue
+        	else
+	            for t in network_ids
+	            	@test check_difference(solution["nw"][string(t)]["valve"][string(valve["index"])]["status"], wntr_result.link["status"][valve_id].values[t], tol)
+	            end
+	        end
+
+
 
         end
     end
