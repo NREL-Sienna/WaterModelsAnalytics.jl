@@ -20,7 +20,7 @@ WaterModels = "7c60b362-08f4-5b14-8680-cd67a3e18348"
 [compat]
 ColorSchemes = "~3.10, ~3.11, ~3.12"
 ColorTypes = "~0.10"
-DataFrames = "~0.21, 0.22"
+DataFrames = "~0.21, 0.22, 1.0"
 Interpolations = "0.13"
 LaTeXStrings = "~1.2"
 Memento = "~1.0, 1.1"
