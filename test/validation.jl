@@ -1,11 +1,3 @@
-import Gurobi
-import JSON
-import JuMP
-using WaterModels
-const _WM = WaterModels
-using PyCall
-
-
 @testset "src/analysis/validation.jl" begin
 
 	## input the tolerance for mismatch

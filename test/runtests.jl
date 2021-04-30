@@ -2,9 +2,18 @@ using WaterModelsAnalytics
 
 import Memento
 
+import Gurobi
+import JSON
+import JuMP
+import WaterModels
+import PyCall
+
 const _WM = WaterModelsAnalytics._WM
 const _IM = WaterModelsAnalytics._WM._IM
 const _MOI = WaterModelsAnalytics._WM._MOI
+
+
+
 
 # Suppress warnings during testing.
 Memento.setlevel!(Memento.getlogger(_IM), "error")
@@ -21,5 +30,8 @@ wm_path = joinpath(dirname(pathof(_WM)), "..")
     include("graph.jl")
 
     include("io.jl")
+
+    include("simulation.jl")
+    include("validation.jl")
 
 end
