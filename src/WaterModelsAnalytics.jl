@@ -110,6 +110,7 @@ export build_graph
 export write_graph
 export colorbar
 export write_visualization
+export write_multi_time_viz
 
 export initialize_wntr_network
 

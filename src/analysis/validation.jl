@@ -135,8 +135,9 @@ function get_valve_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,valve
     head_loss_wntr = Array{Float64,1}(undef,num_time_step)
     head_loss_watermodels = Array{Float64,1}(undef,num_time_step)
 
-    println("--------- check all valves -----------")
-    println(keys(wm_data["nw"]["1"]["valve"]))
+    # I presume this is here for development and need not be used now? JJS 5/10/21
+    #println("--------- check all valves -----------")
+    #println(keys(wm_data["nw"]["1"]["valve"]))
 
     node_fr = string(wm_data["nw"]["1"]["valve"][valve_id]["node_fr"])
     node_to = string(wm_data["nw"]["1"]["valve"][valve_id]["node_to"])
