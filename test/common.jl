@@ -5,8 +5,7 @@ function check_difference(a,b,tol)
 end
 
 ## Parse the network data
-wm_path = joinpath(dirname(pathof(_WM)), "..")
-network = _WM.parse_file("$(wm_path)/examples/data/epanet/van_zyl.inp")
+network = _WM.parse_file("data/epanet/van_zyl.inp")
 network_mn = _WM.make_multinetwork(network)
 
 network_ids = sort([parse(Int, nw) for (nw, nw_data) in network_mn["nw"]])
