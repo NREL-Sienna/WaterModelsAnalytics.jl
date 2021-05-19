@@ -11,7 +11,7 @@ network_mn = _WM.make_multinetwork(network)
 network_ids = sort([parse(Int, nw) for (nw, nw_data) in network_mn["nw"]])
 
 # parse a feasible solution
-result = JSON.parsefile("data/json/van_zyl_PWLRD_feasible_sol.json"; dicttype=Dict,
+result = JSON.parsefile("data/solution/van_zyl_PWLRD_feasible_sol.json"; dicttype=Dict,
                         inttype=Int64, use_mmap=true)
 
 solution = result["solution"]
