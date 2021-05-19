@@ -110,8 +110,15 @@ export build_graph
 export write_graph
 export colorbar
 export write_visualization
+export write_multi_time_viz
 
-export simulate
+export initialize_wntr_network
+
+export initialize_wntr_network
+export update_wntr_controls
+export simulate_wntr
+
+
 export get_node_dataframe
 export get_tank_dataframe
 export get_pipe_dataframe

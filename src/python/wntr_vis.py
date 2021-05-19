@@ -300,7 +300,7 @@ def collate_viz(filenames, outfilename):
 def write_visualization(wn, basefilename, time=1, wnsol=None, layout="dot",
                         sep_page=False, del_files=True):
     """
-    Write out to a file a visualization for a WaterModels network dictionary
+    Write out to a file a visualization for an Epanet network dictionary
     parsed from an EPANET file. `basefilename` should not include an extension
     and will be appended with `_w_cb.pdf` in the final output file, which is a
     multi-page PDF. The `layout` option equates to the layout functions of
