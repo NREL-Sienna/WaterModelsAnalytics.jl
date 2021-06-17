@@ -32,8 +32,11 @@
             # test demand rate
             for t in network_ids
                 wmdem = network_mn["nw"][string(t)]["demand"][i]["flow_nominal"]
-        	    @test check_difference(wmdem, wntr_result.node["demand"][node_id].values[t],
-                                       tol)
+        	    #@test check_difference(wmdem, wntr_result.node["demand"][node_id].values[t],
+                #                       tol)
+                # adjusting syntax to avoid warnings, JJS 5/19/21
+                wntr_dem = getproperty(wntr_result.node["demand"], node_id).values[t]
+        	    @test check_difference(wmdem, wntr_dem, tol)
             end
         end
 
@@ -60,8 +63,8 @@
             node = network_mn["nw"]["1"]["node"][node_id]
     	    for t in network_ids
                 wmhead = network_mn["nw"][string(t)]["node"][node_id]["head_nominal"]
-		        @test check_difference(wmhead, wntr_result.node["head"][node_id].values[t],
-                                       tol)
+                wntr_head = getproperty(wntr_result.node["head"], node_id).values[t]
+		        @test check_difference(wmhead, wntr_head, tol)
 		    end
 	    end
     end
@@ -75,7 +78,7 @@
             @test check_difference(node["elevation"],
                                    wntr_network.nodes._data[node_id].elevation, tol)
             @test check_difference(solution["nw"]["1"]["node"][tank_node_name]["p"],
-                                   wntr_result.node["pressure"][node_id].values[1], tol)
+                      getproperty(wntr_result.node["pressure"], node_id).values[1], tol)
             @test check_difference(tank["min_level"],
                                    wntr_network.nodes._data[node_id].min_level, tol)
             @test check_difference(tank["max_level"],
@@ -145,7 +148,9 @@
 
                 # check pump controls
                 for t in network_ids
-            	    @test check_difference(solution["nw"][string(t)]["pump"][string(pump["index"])]["status"], wntr_result.link["status"][pump_id].values[t], tol)
+                    wmst = solution["nw"][string(t)]["pump"][string(pump["index"])]["status"]
+                    wntrst = getproperty(wntr_result.link["status"], pump_id).values[t]
+            	    @test check_difference(wmst, wntrst, tol)
                 end
             end
         end
@@ -171,7 +176,9 @@
         		    continue
         	    else
 	                for t in network_ids
-	            	    @test check_difference(solution["nw"][string(t)]["valve"][string(valve["index"])]["status"], wntr_result.link["status"][valve_id].values[t], tol)
+                        wmst = solution["nw"][string(t)]["valve"][string(valve["index"])]["status"]
+                        wntrst = getproperty(wntr_result.link["status"], valve_id).values[t]
+	            	    @test check_difference(wmst, wntrst, tol)
 	                end
 	            end
             end

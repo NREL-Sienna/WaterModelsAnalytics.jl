@@ -16,12 +16,12 @@
             for t in 1:length(node_df[!, "time"])
                 @test check_difference(node_df[!, "time"][t], time_step_h*t, tol)
                 @test check_difference(node_df[!, "elevation"][t], elevation, tol)
-                @test check_difference(node_df[!, "head_wntr"][t],
-                                       wntr_result.node["head"][node_id].values[t], tol)
+                wntr_head = getproperty(wntr_result.node["head"], node_id).values[t]
+                @test check_difference(node_df[!, "head_wntr"][t], wntr_head, tol)
                 @test check_difference(node_df[!, "head_watermodels"][t],
                                        solution["nw"][string(t)]["node"][node_id]["h"], tol)
-                @test check_difference(node_df[!, "pressure_wntr"][t],
-                                       wntr_result.node["pressure"][node_id].values[t], tol)
+                wntr_pres = getproperty(wntr_result.node["pressure"], node_id).values[t]
+                @test check_difference(node_df[!, "pressure_wntr"][t], wntr_pres, tol)
                 @test check_difference(node_df[!, "pressure_watermodels"][t],
                                        solution["nw"][string(t)]["node"][node_id]["p"], tol)
             end
@@ -40,15 +40,14 @@
             
             for t in 1:length(tank_df[!, "time"])
                 @test check_difference(tank_df[!, "time"][t], time_step_h*t, tol)
-                @test check_difference(tank_df[!, "volume_wntr"][t],
-                     wntr_result.node["pressure"][tank_name].values[t]*(0.25*pi*diameter^2),
-                                       tol)
+                wntr_vol = getproperty(wntr_result.node["pressure"],
+                                       tank_name).values[t]*(0.25*pi*diameter^2)
+                @test check_difference(tank_df[!, "volume_wntr"][t], wntr_vol, tol)
                 @test check_difference(tank_df[!, "volume_watermodels"][t],
                      solution["nw"][string(t)]["node"][tank_name]["p"]*(0.25*pi*diameter^2),
                                        tol)
-                @test check_difference(tank_df[!, "level_wntr"][t],
-                                       wntr_result.node["pressure"][tank_name].values[t],
-                                       tol)
+                wntr_pres = getproperty(wntr_result.node["pressure"], tank_name).values[t]
+                @test check_difference(tank_df[!, "level_wntr"][t], wntr_pres, tol)
                 @test check_difference(tank_df[!, "level_watermodels"][t],
                                        solution["nw"][string(t)]["node"][tank_name]["p"],
                                        tol)
@@ -68,14 +67,14 @@
 
             for t in 1:length(pipe_df[!, "time"])
                 @test check_difference(pipe_df[!, "time"][t], time_step_h*t, tol)
-                @test check_difference(pipe_df[!, "flow_wntr"][t],
-                                       wntr_result.link["flowrate"][pipe_name].values[t],
-                                       tol)
+                wntr_flow = getproperty(wntr_result.link["flowrate"], pipe_name).values[t]
+                @test check_difference(pipe_df[!, "flow_wntr"][t], wntr_flow, tol)
                 @test check_difference(pipe_df[!, "flow_watermodels"][t],
                                        solution["nw"][string(t)]["pipe"][pipe_id]["q"], tol)
+                wntr_head_nf = getproperty(wntr_result.node["head"], node_fr).values[t]
+                wntr_head_nt = getproperty(wntr_result.node["head"], node_to).values[t]
                 @test check_difference(pipe_df[!, "head_loss_wntr"][t],
-                                       wntr_result.node["head"][node_fr].values[t] -
-                                       wntr_result.node["head"][node_to].values[t], tol)
+                                       wntr_head_nf - wntr_head_nt, tol)
                 @test check_difference(pipe_df[!, "head_loss_watermodels"][t],
                                        solution["nw"][string(t)]["node"][node_fr]["h"] -
                                        solution["nw"][string(t)]["node"][node_to]["h"], tol)
@@ -93,15 +92,16 @@
 
             for t in 1:length(short_pipe_df[!, "time"])
                 @test check_difference(short_pipe_df[!, "time"][t], time_step_h*t, tol)
-                @test check_difference(short_pipe_df[!, "flow_wntr"][t],
-                                 wntr_result.link["flowrate"][short_pipe_name].values[t],
-                                       tol)
+                wntr_flow = getproperty(wntr_result.link["flowrate"],
+                                        short_pipe_name).values[t]
+                @test check_difference(short_pipe_df[!, "flow_wntr"][t], wntr_flow, tol)
                 @test check_difference(short_pipe_df[!, "flow_watermodels"][t],
                               solution["nw"][string(t)]["short_pipe"][short_pipe_id]["q"],
                                        tol)
+                wntr_head_nf = getproperty(wntr_result.node["head"], node_fr).values[t]
+                wntr_head_nt = getproperty(wntr_result.node["head"], node_to).values[t]
                 @test check_difference(short_pipe_df[!, "head_loss_wntr"][t],
-                                       wntr_result.node["head"][node_fr].values[t] -
-                                       wntr_result.node["head"][node_to].values[t], tol)
+                                       wntr_head_nf - wntr_head_nt, tol)
                 @test check_difference(short_pipe_df[!, "head_loss_watermodels"][t],
                                        solution["nw"][string(t)]["node"][node_fr]["h"] -
                                        solution["nw"][string(t)]["node"][node_to]["h"], tol)
@@ -121,20 +121,20 @@
 
             for t in 1:length(valve_df[!, "time"])
                 @test check_difference(valve_df[!, "time"][t], time_step_h*t, tol)
-                @test check_difference(valve_df[!, "status_wntr"][t],
-                                       wntr_result.link["status"][valve_name].values[t], tol)
+                wntr_st = getproperty(wntr_result.link["status"], valve_name).values[t]
+                @test check_difference(valve_df[!, "status_wntr"][t], wntr_st, tol)
                 @test check_difference(valve_df[!, "status_watermodels"][t],
                                      solution["nw"][string(t)]["valve"][valve_id]["status"],
                                        tol)
-                @test check_difference(valve_df[!, "flow_wntr"][t],
-                                       wntr_result.link["flowrate"][valve_name].values[t],
-                                       tol)
+                wntr_flow = getproperty(wntr_result.link["flowrate"], valve_name).values[t]
+                @test check_difference(valve_df[!, "flow_wntr"][t], wntr_flow, tol)
                 @test check_difference(valve_df[!, "flow_watermodels"][t],
                                        solution["nw"][string(t)]["valve"][valve_id]["q"],
                                        tol)
+                wntr_head_nf = getproperty(wntr_result.node["head"], node_fr).values[t]
+                wntr_head_nt = getproperty(wntr_result.node["head"], node_to).values[t]
                 @test check_difference(valve_df[!, "head_loss_wntr"][t],
-                                       wntr_result.node["head"][node_fr].values[t] -
-                                       wntr_result.node["head"][node_to].values[t], tol)
+                                       wntr_head_nf - wntr_head_nt, tol)
                 @test check_difference(valve_df[!, "head_loss_watermodels"][t],
                                        solution["nw"][string(t)]["node"][node_fr]["h"] -
                                        solution["nw"][string(t)]["node"][node_to]["h"], tol)
@@ -192,32 +192,26 @@
 
             for t in 1:length(pump_df[!, "time"])
                 @test check_difference(pump_df[!, "time"][t], time_step_h*t, tol)
-                @test check_difference(pump_df[!, "status_wntr"][t],
-                                       wntr_result.link["status"][pump_name].values[t], tol)
+                wntr_st = getproperty(wntr_result.link["status"], pump_name).values[t]
+                @test check_difference(pump_df[!, "status_wntr"][t], wntr_st, tol)
                 @test check_difference(pump_df[!, "status_watermodels"][t],
                                        solution["nw"][string(t)]["pump"][pump_id]["status"],
                                        tol)
-                @test check_difference(pump_df[!, "flow_wntr"][t],
-                                       wntr_result.link["flowrate"][pump_name].values[t],
-                                       tol)
+                wntr_flow = getproperty(wntr_result.link["flowrate"], pump_name).values[t]
+                @test check_difference(pump_df[!, "flow_wntr"][t], wntr_flow, tol)
                 @test check_difference(pump_df[!, "flow_watermodels"][t],
                                        solution["nw"][string(t)]["pump"][pump_id]["q"], tol)
+                wntr_head_nf = getproperty(wntr_result.node["head"], node_fr).values[t]
+                wntr_head_nt = getproperty(wntr_result.node["head"], node_to).values[t]
                 @test check_difference(pump_df[!, "head_gain_wntr"][t],
-                                       wntr_result.link["status"][pump_name].values[t]*
-                                       (wntr_result.node["head"][node_to].values[t] -
-                                        wntr_result.node["head"][node_fr].values[t]), tol)
+                                       wntr_st*(wntr_head_nt - wntr_head_nf), tol)
                 @test check_difference(pump_df[!, "head_gain_watermodels"][t],
                                        solution["nw"][string(t)]["pump"][pump_id]["status"]*
                                        (solution["nw"][string(t)]["node"][node_to]["h"]-
                                         solution["nw"][string(t)]["node"][node_fr]["h"]),
                                        tol)
-                power_wntr = wntr_result.link["status"][pump_name].values[t]*
-                compute_pump_power(pump_obj,
-                                   wntr_result.link["flowrate"][pump_name].values[t],
-                                   wntr_result.link["status"][pump_name].values[t]*
-                                   (wntr_result.node["head"][node_to].values[t] -
-                                    wntr_result.node["head"][node_fr].values[t]),
-                                   wntr_network)
+                power_wntr = wntr_st*compute_pump_power(pump_obj, wntr_flow,
+                                   wntr_st*(wntr_head_nt - wntr_head_nf), wntr_network)
                 power_watermodels = solution["nw"][string(t)]["pump"][pump_id]["status"]*
                 compute_pump_power(pump_obj,solution["nw"][string(t)]["pump"][pump_id]["q"],
                                    solution["nw"][string(t)]["pump"][pump_id]["status"]*

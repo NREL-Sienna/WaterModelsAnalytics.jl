@@ -302,7 +302,8 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
         idx = findlast("\\n", label)
         if idx != nothing
             idx = idx[1]
-            if contains(label[idx:end], "h:")
+            #if contains(label[idx:end], "h:") # requires Julia >=1.5
+            if occursin("h:", label[idx:end])
                 label = label[1:idx-1]
             end
         end
@@ -323,7 +324,8 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
             idx = findlast("\\n", label)
             if idx != nothing
                 idx = idx[1]
-                if contains(label[idx:end], "q:")
+                #if contains(label[idx:end], "q:") # requires Julia >=1.5
+                if occursin("q:", label[idx:end])
                     label = label[1:idx-1]
                 end
             end
