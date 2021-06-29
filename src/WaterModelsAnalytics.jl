@@ -107,17 +107,14 @@ include("graph/output.jl")
 include("plots/pumps.jl")
 
 export build_graph
+export update_graph
 export write_graph
-export colorbar
 export write_visualization
 export write_multi_time_viz
 
 export initialize_wntr_network
-
-export initialize_wntr_network
 export update_wntr_controls
 export simulate_wntr
-
 
 export get_node_dataframe
 export get_tank_dataframe
@@ -126,7 +123,6 @@ export get_short_pipe_dataframe
 export get_valve_dataframe
 export get_pump_dataframe
 
-# export compare_tank_head
 export compare_tank_level
 
 export calc_pump_bep!

@@ -1,9 +1,11 @@
 """
-Calculate the best-efficiency point (BEP) for the pumps in the water network. The BEP flow,
+    calc_pump_bep!(pumps)
+
+Calculate the best-efficiency point (BEP) for the pumps in a water network. The BEP flow,
 head, and power are added to the pumps' dictionaries.
 """
-function calc_pump_bep!(data::Dict{String,<:Any})
-    for (pump_id, pump) in data["pump"]
+function calc_pump_bep!(pumps::Dict{String,<:Any})
+    for (pump_id, pump) in pumps
         q_bep = NaN
 
         # Calculate best efficiency point efficiencies.

@@ -1,5 +1,8 @@
 
 """ 
+    write_visualization(data, basefilename, solution=nothing;
+                        layout="dot", args="", sep_page=false, del_files=true)
+
 Write out to a file a visualization for a WaterModels network dictionary parsed from an
 EPANET file. `basefilename` should not include an extension and will be appended with
 `_w_cb.pdf` in the final output file, which is a multi-page PDF. The `layout` option equates
@@ -31,6 +34,9 @@ end
 
 
 """ 
+    write_multi_time_viz(wmdata, solution, basefilename;
+                         layout="dot", args="", del_files=true)
+
 Create a visualizations for each time. `wmdata` and `solution` are multi-time WM data
 objects.
 """
@@ -80,10 +86,12 @@ end
 
 
 """
+    write_graph(G, filename, layout=nothing, args=nothing)
+
 Use graphviz (via pygraphviz) to output a visualization to a file for a graph.
 
 The layout may be redone here but will add computational cost. Note that absolute coordinate
-layouts (`neato -n` will likely not work here as the coordinates were overwritten during the
+layouts (`neato -n`) will likely not work here as the coordinates were overwritten during the
 call to `build_graph`.
 """
 function write_graph(G::PyCall.PyObject, filename::String,
@@ -109,6 +117,7 @@ function write_graph(G::PyCall.PyObject, filename::String,
 end
 
 
+# FIXME:  change this to _colorbar()
 """
 create and save a colorbar that represents the node elevations
 """

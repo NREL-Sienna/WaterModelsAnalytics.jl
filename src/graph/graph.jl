@@ -8,6 +8,8 @@
 
 
 """
+    build_graph(data, solution=nothing; layout="dot", args="")
+
 Build pygraphviz graph object from a WaterModels network dictionary parsed from an EPANET
 file. If a `solution` dict is provided, it should be for the same time as that of the `data`
 dict. The `layout` option equates to the layout functions of graphviz (dot, neato, etc.) and
@@ -62,6 +64,8 @@ end # function build_graph
 
 
 """
+    update_graph!(G, data, solution=nothing)
+
 Update a graph for a different time. Updates reservoir elevation (aka head), demands, and
 solution information (if provided). 
 """
@@ -97,6 +101,7 @@ function update_graph!(G::PyCall.PyObject, data::Dict{String,Any},
 end
     
 
+# FIXME:  change to _add_nodes!()
 """
 Add nodes to the pygraphviz graph object, including node attributes for name label,
 elevation, and coordinates
@@ -162,6 +167,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
 end
 
 
+# FIXME:  change to _node_labels!()
 """Add labels for junctions, tanks, and reservoirs."""
 function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
     for (key, node) in nodes
@@ -288,6 +294,7 @@ function _add_valve_to_graph!(graph::PyCall.PyObject, valve::Dict{String, <:Any}
 end
 
 
+#FIXME:  change to _add_solution!()
 """
 add solution values to the node and link labels
 """
