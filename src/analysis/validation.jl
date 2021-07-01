@@ -1,8 +1,12 @@
 
-"""
-Perform EPANET hydraulic simulation (via WNTR) and compute timeseries of flows and heads
-"""
+##
+# Perform EPANET hydraulic simulation (via WNTR) and compute timeseries of flows and heads
+##
 
+# TODO:
+# * add docstrings
+# * add types for function arguments
+# * change (or overload) get_dataframe methods to allow returning just WM info
 
 function _get_wntr_node_attribute(wntr_simulation, name::AbstractString, attribute::String)
     values = PyCall.getproperty(wntr_simulation.node[attribute], name).values[1:end-1]

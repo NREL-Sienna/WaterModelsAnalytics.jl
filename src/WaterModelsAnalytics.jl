@@ -98,13 +98,13 @@ end
 include("analysis/utility.jl")
 include("analysis/simulation.jl")
 include("analysis/validation.jl")
-include("analysis/visualization.jl")
 include("analysis/pump_bep.jl")
 
 include("graph/graph.jl")
 include("graph/output.jl")
 
 include("plots/pumps.jl")
+include("plots/nodes.jl")
 
 export build_graph
 export update_graph
@@ -127,5 +127,7 @@ export compare_tank_level
 
 export calc_pump_bep!
 export plot_pumps
+export plot_tank
+export plot_tanks
 
 end # module WaterModelsAnalytics
