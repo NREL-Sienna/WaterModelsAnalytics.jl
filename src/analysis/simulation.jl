@@ -81,6 +81,7 @@ function _add_wntr_tanks!(wntr_network::PyCall.PyObject, data::Dict{String, Any}
         min_level, max_level = tank["min_level"], tank["max_level"]
         diameter, min_vol = tank["diameter"], tank["min_vol"]
         coordinates = haskey(node, "coordinates") ? node["coordinates"] : (0.0, 0.0)
+        # add original epanet descriptive name of the tank (i.e., source_id)? JJS 7/5/21
 
         # Add the tank to the WNTR network.
         wntr_network.add_tank(

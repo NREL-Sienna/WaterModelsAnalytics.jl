@@ -5,18 +5,31 @@
 
 # TODO:
 # * add docstrings
-# * add types for function arguments
-# * change (or overload) get_dataframe methods to allow returning just WM info
+# * add types for function arguments -- in progress (tanks)
+# * change (or overload) get_dataframe methods to allow returning just WM info -- in
+#   progress (tanks)
+
 
 function _get_wntr_node_attribute(wntr_simulation, name::AbstractString, attribute::String)
     values = PyCall.getproperty(wntr_simulation.node[attribute], name).values[1:end-1]
     return Float64.(values) # Convert to 64-bit floating point array.
 end
-
-
 function _get_wntr_link_attribute(wntr_simulation, name::AbstractString, attribute::String)
     values = PyCall.getproperty(wntr_simulation.link[attribute], name).values[1:end-1]
     return Float64.(values) # Convert to 64-bit floating point array.
+end
+
+
+function _get_times(wm_data::Dict{String,<:Any}, wm_solution::Dict{String,<:Any})
+    num_time_step = length(wm_solution["nw"]) # number of time steps
+    time_step = wm_data["time_step"] / 3600.0 # length per time step (hour)
+    return num_time_step, time_step
+end
+function _get_times(wntr_data::PyCall.PyObject)
+    duration = wntr_data.options.time.duration
+    time_step = wntr_data.options.time.hydraulic_timestep
+    num_time_step = Int64(duration/time_step)
+    return num_time_step, time_step/3600
 end
 
 
@@ -45,31 +58,66 @@ function get_node_dataframe(wm_data, wm_solution, wntr_data, wntr_simulation, no
     return node_df
 end
 
-# compare tanks
-function get_tank_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation, tank_id)
-    num_time_step = length(wm_solution["nw"])            # number of time steps
-    time_step = wm_data["time_step"]/3600                # length per time step (hour)
-    tank_node_id = string(wm_data["nw"]["1"]["tank"][tank_id]["node"])
-    tank_name = tank_node_id
-    diameter = wntr_data.nodes._data[tank_name].diameter
-    volume_wntr = Array{Float64,1}(undef,num_time_step)
-    volume_watermodels = Array{Float64,1}(undef,num_time_step)
-    level_wntr = Array{Float64,1}(undef,num_time_step)
-    level_watermodels = Array{Float64,1}(undef,num_time_step)
-    
-    volume_wntr = _get_wntr_node_attribute(wntr_simulation, tank_name, "pressure") .* (0.25 * pi * diameter^2)
-    level_wntr = _get_wntr_node_attribute(wntr_simulation, tank_name, "pressure")
 
+function get_tank_dataframe(tank_id::String, wm_data::Dict{String,<:Any},
+                            wm_solution::Dict{String,<:Any})
+    num_time_step, time_step = _get_times(wm_data, wm_solution)
+    tank_node_id = string(wm_data["nw"]["1"]["tank"][tank_id]["node"])
+    level_watermodels, volume_watermodels = _get_tank_wm(tank_id, tank_node_id,
+                                                         num_time_step, wm_solution)
+    tank_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step,
+                                   level_watermodels = level_watermodels,
+                                   volume_watermodels = volume_watermodels)
+    return tank_df
+end
+function get_tank_dataframe(tank_node_id::String, wntr_data::PyCall.PyObject,
+                            wntr_simulation::PyCall.PyObject)
+    num_time_step, time_step = _get_times(wntr_data)
+    diameter = wntr_data.nodes._data[tank_node_id].diameter
+    level_wntr, volume_wntr = _get_tank_wntr(tank_node_id, diameter, wntr_simulation)
+    tank_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step,
+                                   level_wntr = level_wntr,
+                                   volume_wntr = volume_wntr)
+    return tank_df
+end
+
+function get_tank_dataframe(tank_id::String, wm_data::Dict{String,<:Any},
+                            wm_solution::Dict{String,<:Any}, wntr_data::PyCall.PyObject,
+                            wntr_simulation::PyCall.PyObject)
+    num_time_step, time_step = _get_times(wm_data, wm_solution)
+    tank_node_id = string(wm_data["nw"]["1"]["tank"][tank_id]["node"])
+    diameter = wm_data["nw"]["1"]["tank"]["1"]["diameter"]
+    
+    level_watermodels, volume_watermodels = _get_tank_wm(tank_id, tank_node_id,
+                                                         num_time_step, wm_solution)
+    level_wntr, volume_wntr = _get_tank_wntr(tank_node_id, diameter, wntr_simulation)
+
+    tank_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step,
+                                   level_watermodels = level_watermodels,
+                                   volume_watermodels = volume_watermodels,                
+                                   level_wntr = level_wntr,
+                                   volume_wntr = volume_wntr)
+    return tank_df
+end
+
+
+function _get_tank_wm(tank_id::String, tank_node_id::String, num_time_step::Int64,
+                      wm_solution::Dict{String,<:Any})
+    level_watermodels = Array{Float64,1}(undef,num_time_step)
+    volume_watermodels = Array{Float64,1}(undef,num_time_step)
     for t in 1:num_time_step
         volume_watermodels[t] = wm_solution["nw"][string(t)]["tank"][tank_id]["V"]
         level_watermodels[t] = wm_solution["nw"][string(t)]["node"][tank_node_id]["p"]
     end
-
-    tank_df = DataFrames.DataFrame(time = 1:time_step:time_step*num_time_step, volume_wntr = volume_wntr, volume_watermodels = volume_watermodels, 
-        level_wntr = level_wntr, level_watermodels = level_watermodels)
-
-    return tank_df
+    return level_watermodels, volume_watermodels
 end
+function _get_tank_wntr(tank_node_id::String, diameter::Float64,
+                        wntr_simulation::PyCall.PyObject)
+    level_wntr = _get_wntr_node_attribute(wntr_simulation, tank_node_id, "pressure")
+    volume_wntr = level_wntr .* (0.25 * pi * diameter^2)
+    return level_wntr, volume_wntr
+end
+    
 
 
 # compare pipes
