@@ -3,6 +3,7 @@
 # * add plotting head/pressure of nodes
 # * better and more complete docstrings
 # * allow user to provide color and/or symbol for plotting the series data
+# * add tests
 
 # Is there a need to plot only WNTR results? I can't think of any at the moment, JJS 7/13/21
 

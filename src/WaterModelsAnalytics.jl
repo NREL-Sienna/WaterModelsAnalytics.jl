@@ -122,6 +122,7 @@ export get_pipe_dataframe
 export get_short_pipe_dataframe
 export get_valve_dataframe
 export get_pump_dataframe
+export compute_pump_power
 
 export compare_tank_level
 

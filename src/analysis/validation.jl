@@ -1,9 +1,7 @@
-
-##
-# Perform EPANET hydraulic simulation (via WNTR) and compute timeseries of flows and heads
-##
+## functions to construct dataframes of time-series simulation data
 
 # TODO:
+# * switch all dataframe methods to take element id as first argument (tanks are done)
 # * add docstrings
 # * add types for function arguments -- in progress (tanks)
 # * change (or overload) get_dataframe methods to allow returning just WM info -- in
@@ -86,7 +84,7 @@ function get_tank_dataframe(tank_id::String, wm_data::Dict{String,<:Any},
                             wntr_simulation::PyCall.PyObject)
     num_time_step, time_step = _get_times(wm_data, wm_solution)
     tank_node_id = string(wm_data["nw"]["1"]["tank"][tank_id]["node"])
-    diameter = wm_data["nw"]["1"]["tank"]["1"]["diameter"]
+    diameter = wm_data["nw"]["1"]["tank"][tank_id]["diameter"]
     
     level_watermodels, volume_watermodels = _get_tank_wm(tank_id, tank_node_id,
                                                          num_time_step, wm_solution)
@@ -232,38 +230,6 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
     node_fr = string(wm_data["nw"]["1"]["pump"][pump_id]["node_fr"])
     node_to = string(wm_data["nw"]["1"]["pump"][pump_id]["node_to"])
 
-    function compute_pump_power(pump_obj,q,dh,wntr_data)
-        if pump_obj.efficiency == nothing
-            eff_curve = nothing
-        else
-            eff_curve = wntr_data.get_curve(pump_obj.efficiency).points
-        end
-        if eff_curve != nothing
-            for j in 1:length(eff_curve)
-                if (j == 1) & (q < eff_curve[j][1])
-                    eff = eff_curve[j][2]/100 # use the first Q-eff point when q < q_min on the eff curve
-                    break
-                elseif j == length(eff_curve)
-                    eff = eff_curve[j][2]/100 # use the last Q-eff point when q > q_max on the eff curve
-                elseif (q >= eff_curve[j][1]) & (q < eff_curve[j+1][1])
-                    # linear interpolation of the efficiency curve
-                    a1 = (eff_curve[j+1][1]-q)/(eff_curve[j+1][1]-eff_curve[j][1])
-                    a2 = (q-eff_curve[j][1])/(eff_curve[j+1][1]-eff_curve[j][1])
-                    eff = (a1*eff_curve[j][2]+a2*eff_curve[j+1][2])/100 
-                    break
-                end
-            end
-        elseif wntr_data.options.energy.global_efficiency != nothing
-            eff = wntr_data.options.energy.global_efficiency/100 # e.g. convert 60 to 60% (0.6)
-        else
-            Memento.info(_LOGGER, "No pump efficiency provided, 75% is used")
-            eff = 0.75
-        end
-
-        power = _WM._GRAVITY * _WM._DENSITY * dh * q / eff # Watt
-        return power
-    end
-
     status_wntr = _get_wntr_link_attribute(wntr_simulation, pump_name, "status")
     flow_wntr = _get_wntr_link_attribute(wntr_simulation, pump_name, "flowrate")
     head_start_wntr = _get_wntr_node_attribute(wntr_simulation, node_fr, "head")
@@ -288,4 +254,39 @@ function get_pump_dataframe(wm_data,wm_solution,wntr_data,wntr_simulation,pump_i
         cost_wntr = cost_wntr, cost_watermodels = cost_watermodels)
 
     return pump_df
+end
+
+
+## it looks like this function duplicate some of what is in calc_pump_bep!() and
+## plot_pumps() -- it should also maybe go in one of those files JJS 7/21/21
+function compute_pump_power(pump_obj,q,dh,wntr_data)
+    if pump_obj.efficiency == nothing
+        eff_curve = nothing
+    else
+        eff_curve = wntr_data.get_curve(pump_obj.efficiency).points
+    end
+    if eff_curve != nothing
+        for j in 1:length(eff_curve)
+            if (j == 1) & (q < eff_curve[j][1])
+                eff = eff_curve[j][2]/100 # use the first Q-eff point when q < q_min on the eff curve
+                break
+            elseif j == length(eff_curve)
+                eff = eff_curve[j][2]/100 # use the last Q-eff point when q > q_max on the eff curve
+            elseif (q >= eff_curve[j][1]) & (q < eff_curve[j+1][1])
+                # linear interpolation of the efficiency curve
+                a1 = (eff_curve[j+1][1]-q)/(eff_curve[j+1][1]-eff_curve[j][1])
+                a2 = (q-eff_curve[j][1])/(eff_curve[j+1][1]-eff_curve[j][1])
+                eff = (a1*eff_curve[j][2]+a2*eff_curve[j+1][2])/100 
+                break
+            end
+        end
+    elseif wntr_data.options.energy.global_efficiency != nothing
+        eff = wntr_data.options.energy.global_efficiency/100 # e.g. convert 60 to 60% (0.6)
+    else
+        Memento.info(_LOGGER, "No pump efficiency provided, 75% is used")
+        eff = 0.75
+    end
+
+    power = _WM._GRAVITY * _WM._DENSITY * dh * q / eff # Watt
+    return power
 end

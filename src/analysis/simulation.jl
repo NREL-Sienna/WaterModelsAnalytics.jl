@@ -1,3 +1,7 @@
+#
+# Perform EPANET hydraulic simulation (via WNTR) and compute timeseries of flows and heads
+##
+
 function _populate_wntr_time_options!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
     # Populate global WNTR time step options.
     wntr_network.options.time.duration = data["duration"]
