@@ -7,6 +7,9 @@
 
 # Is there a need to plot only WNTR results? I can't think of any at the moment, JJS 7/13/21
 
+# Is it necessary to have separate functions for tanks and nodes? Tank level is essentially
+# head converted to level. A keyword (node/tank) could be provided, and the labeling of the
+# plot could be changed. JJS 7/29/21.
 
 """
 Plot tank levels for the specified tank as calculated from WaterModels.
@@ -19,13 +22,14 @@ function plot_tank(tank_id::String, wm_data::Dict{String,<:Any},
     tank_df = get_tank_dataframe(tank_id, wm_data, wm_solution)
 
     p = Plots.plot(xlabel="time [h]", ylabel="level [m]"; kwargs...)
+    clr = 1 # this will be the first line
     Plots.plot!(p, tank_df.time, tank_df.level_watermodels, lw=2,
-                label="tank $tank_name (node $tank_node_id)")
-    clr = p.series_list[end].plotattributes[:linecolor]
+                color=clr, label="tank $tank_name (node $tank_node_id)")
+    #clr = p.series_list[end].plotattributes[:linecolor]
     Plots.plot!(p, tank_df.time, tank["min_level"]*ones(length(tank_df.time)),
-                linecolor=clr, linestyle=:dot, label="")
+                color=clr, linestyle=:dot, label="")
     Plots.plot!(p, tank_df.time, tank["max_level"]*ones(length(tank_df.time)),
-                linecolor=clr, linestyle=:dot, label="")
+                color=clr, linestyle=:dot, label="")
 
     return p
 end 
@@ -40,14 +44,15 @@ function plot_tank!(p::Plots.Plot, tank_id::String, wm_data::Dict{String,<:Any},
     tank_node_id = string(tank["node"])
     tank_name = string(tank["name"])    
     tank_df = get_tank_dataframe(tank_id, wm_data, wm_solution)
-    
+
+    clr = Int(length(p.series_list)/3 + 1) # 3 lines per tank -- increment one for next color
     Plots.plot!(p, tank_df.time, tank_df.level_watermodels, lw=2,
-                label="tank $tank_name (node $tank_node_id)")
-    clr = p.series_list[end].plotattributes[:linecolor]
+                color=clr, label="tank $tank_name (node $tank_node_id)")
+    #clr = p.series_list[end].plotattributes[:linecolor]
     Plots.plot!(p, tank_df.time, tank["min_level"]*ones(length(tank_df.time)),
-                linecolor=clr, linestyle=:dot, label="")
+                color=clr, linestyle=:dot, label="")
     Plots.plot!(p, tank_df.time, tank["max_level"]*ones(length(tank_df.time)),
-                linecolor=clr, linestyle=:dot, label="")
+                color=clr, linestyle=:dot, label="")
 
     return p
 end
@@ -88,9 +93,9 @@ function plot_tank(tank_id::String, wm_data::Dict{String,<:Any},
     Plots.plot!(p, tank_df.time, tank_df.level_watermodels, lw=2, label="WaterModel")
     Plots.plot!(p, tank_df.time, tank_df.level_wntr, lw=2, label="WNTR")
     Plots.plot!(p, tank_df.time, tank["min_level"]*ones(length(tank_df.time)),
-                linecolor=:black, linestyle=:dot, label="")
+                color=:black, linestyle=:dot, label="")
     Plots.plot!(p, tank_df.time, tank["max_level"]*ones(length(tank_df.time)),
-                linecolor=:black, linestyle=:dot, label="")
+                color=:black, linestyle=:dot, label="")
 
     return p
 end 
