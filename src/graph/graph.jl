@@ -223,11 +223,11 @@ end
 
 
 function _get_link_dir(link::Dict{String, <:Any})
-    if link["flow_direction"] == _WM.UNKNOWN
+    if link["flow_direction"] == _WM.FLOW_DIRECTION_UNKNOWN
         return "none"
-    elseif link["flow_direction"] == _WM.POSITIVE
+    elseif link["flow_direction"] == _WM.FLOW_DIRECTION_POSITIVE
         return "forward"
-    elseif link["flow_direction"] == _WM.NEGATIVE
+    elseif link["flow_direction"] == _WM.FLOW_DIRECTION_NEGATIVE
         return "back"
     end
 end

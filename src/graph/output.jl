@@ -5,10 +5,11 @@
 
 Write out to a file a visualization for a WaterModels network dictionary parsed from an
 EPANET file. `basefilename` should not include an extension and will be appended with
-`_w_cb.pdf` in the final output file, which is a multi-page PDF. The `layout` option equates
-to the layout functions of graphviz (dot, neato, etc.). Use `del_files=false` to keep the
-intermediate files. If a `solution` dict is provided, it should be for the same time as that
-of the `data` dict.
+`_graph_w_cb.pdf` in the final output file, which is a multi-page PDF by default. The
+`layout` option equates to the layout functions of graphviz (dot, neato, etc.). Provide
+`layout=neato` and `args=-n` to use the provided graph coordinates for the layout.  Use
+`del_files=false` to keep the intermediate files. If a `solution` dict is provided, it
+should be for the same time as that of the `data` dict.
 """
 function write_visualization(data::Dict{String,Any}, basefilename::String,
                              solution::Union{Nothing, Dict{String,Any}}=nothing;
@@ -21,7 +22,7 @@ function write_visualization(data::Dict{String,Any}, basefilename::String,
     
     G = build_graph(data, solution, layout=layout, args=args)
     write_graph(G, gpdffile)
-    colorbar(G, cbfile)
+    _colarbar(G, cbfile)
 
     # note that `stack_bar` is a python function from `wntr_vis.py`
     stack_cbar(gpdffile, cbfile, outfile, sep_page)
@@ -71,7 +72,7 @@ function write_multi_time_viz(wmdata::Dict{String,Any}, solution::Dict{String,An
         filenames[k+=1] = filename
     end
 
-    colorbar(G, cbfile)
+    _colarbar(G, cbfile)
 
     # collate the pages
     collate_viz(filenames, outfile)
@@ -117,18 +118,19 @@ function write_graph(G::PyCall.PyObject, filename::String,
 end
 
 
-# FIXME:  change this to _colorbar()
 """
 create and save a colorbar that represents the node elevations
 """
-function colorbar(G::PyCall.PyObject, filename::String)
+function _colarbar(G::PyCall.PyObject, filename::String)
     elmin = parse(Float64, get(G.graph_attr, "elmin", 0.0))
     elmax = parse(Float64, get(G.graph_attr, "elmax", 1.0))
     elmid = elmin + 0.5 * (elmax - elmin)
     
     x = reshape(collect(range(0.0, stop=1.0, length=100)), (1,:))
     Plots.heatmap(x, c=:viridis, size=(500,100), legend=:none, yaxis=false)
-    Plots.plot!(xticks=(0:50:100, [elmin, elmid, elmax]))
+    hmg = 5*Plots.mm
+    Plots.plot!(xticks=(0:50:100, [elmin, elmid, elmax]),
+                left_margin = hmg, right_margin = hmg )
     Plots.plot!(yticks=false) # a regression requires this for GR, JJS 1/4/21,
                               # https://github.com/JuliaPlots/Plots.jl/issues/3019
     Plots.title!("Elevation")

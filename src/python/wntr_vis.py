@@ -156,11 +156,13 @@ def link_attrs(wn, Gnx):
             eatts['style'] = 'bold'
             eatts['label'] = "Pmp\n" + edge[2]
         elif eatts['type'] == 'Valve': # these are special-type valves, e.g., PRVs
-            link = wn.get_link(edge[2])
+            #link = wn.get_link(edge[2]) # oops, I think this is redundant, will delete
             eatts['color'] = 'purple' # what is a good eye-catching color?
             eatts['style'] = 'bold'
             eatts['label'] = link.valve_type + "\n" + edge[2]
-        elif edge[2] in wn._check_valves:
+        # wn._check_valves is no longer in wntr-0.4.1 JJS 3/3/22
+        #elif edge[2] in wn._check_valves:
+        elif link.check_valve:
             length = "%2.2g m" % link.length
             eatts['label'] = "CV\n" + edge[2] + "\n" + length
         elif edge[2] in sv_name_list:
