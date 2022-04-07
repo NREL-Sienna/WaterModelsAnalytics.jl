@@ -105,6 +105,7 @@ include("graph/output.jl")
 
 include("plots/pumps.jl")
 include("plots/nodes.jl")
+include("plots/links.jl")
 
 export build_graph
 export update_graph

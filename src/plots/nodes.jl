@@ -4,12 +4,16 @@
 # * better and more complete docstrings
 # * allow user to provide color and/or symbol for plotting the series data
 # * add tests
+# * check for and use correct units in plot labels
 
 # Is there a need to plot only WNTR results? I can't think of any at the moment, JJS 7/13/21
 
 # Is it necessary to have separate functions for tanks and nodes? Tank level is essentially
 # head converted to level. A keyword (node/tank) could be provided, and the labeling of the
 # plot could be changed. JJS 7/29/21.
+
+
+### Tank plotting ###
 
 """
 Plot tank levels for the specified tank as calculated from WaterModels.
@@ -122,3 +126,53 @@ function plot_tanks(wm_data::Dict{String,<:Any}, wm_solution::Dict{String,<:Any}
         end
     end
 end
+
+
+### Node plotting ###
+
+"""
+Plot node head for the specified node as calculated from WaterModels.
+"""
+function plot_node(node_id::String, wm_data::Dict{String,<:Any},
+                   wm_solution::Dict{String,<:Any}; kwargs...)
+    node = wm_data["nw"]["1"]["node"][node_id]
+    node_name = node["source_id"][2]
+    elev = node["elevation"]
+    node_df = get_node_dataframe(node_id, wm_data, wm_solution)
+
+    p = Plots.plot(xlabel="time [h]", ylabel="head [m]"; kwargs...)
+    clr = 1 # this will be the first line
+    Plots.plot!(p, node_df.time, elev .+ node_df.pressure_watermodels, lw=2,
+                color=clr, label="node $node_name ($node_id)")
+    Plots.plot!(p, node_df.time, node["head_min"]*ones(length(node_df.time)),
+                color=clr, linestyle=:dot, label="")
+    Plots.plot!(p, node_df.time, node["head_max"]*ones(length(node_df.time)),
+                color=clr, linestyle=:dot, label="")
+
+    return p
+end 
+
+
+"""
+Add node head for the specified node to a plot
+"""
+function plot_node!(p::Plots.Plot, node_id::String, wm_data::Dict{String,<:Any},
+                    wm_solution::Dict{String,<:Any})
+    node = wm_data["nw"]["1"]["node"][node_id]
+    node_name = node["source_id"][2]
+    elev = node["elevation"]
+    node_df = get_node_dataframe(node_id, wm_data, wm_solution)
+
+    clr = Int(length(p.series_list)/3 + 1) # 3 lines per node -- increment one for next color
+    Plots.plot!(p, node_df.time, elev .+ node_df.pressure_watermodels, lw=2,
+                color=clr, label="node $node_name ($node_id)")
+    Plots.plot!(p, node_df.time, node["head_min"]*ones(length(node_df.time)),
+                color=clr, linestyle=:dot, label="")
+    Plots.plot!(p, node_df.time, node["head_max"]*ones(length(node_df.time)),
+                color=clr, linestyle=:dot, label="")
+
+    return p
+end
+
+plot_node!(node_id::String, wm_data::Dict{String,<:Any}, wm_solution::Dict{String,<:Any}) =
+    plot_node!(Plots.current(), node_id, wm_data, wm_solution)
