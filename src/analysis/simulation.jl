@@ -2,6 +2,9 @@
 # Perform EPANET hydraulic simulation (via WNTR) and compute timeseries of flows and heads
 ##
 
+# TODO:
+# - add `!` to all functions that change the argument (wntr_network in most cases)
+
 function _populate_wntr_time_options!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
     # Populate global WNTR time step options.
     wntr_network.options.time.duration = data["duration"]
@@ -121,11 +124,11 @@ function _add_wntr_pipes!(wntr_network::PyCall.PyObject, data::Dict{String, Any}
         length, diameter = pipe["length"], pipe["diameter"]
         roughness, minor_loss = pipe["roughness"], pipe["minor_loss"]
 
-        if pipe["status"] == 1
+        if pipe["status"] != 0 # why are all these `-1` rather than 1? JJS 4/6/22
             # Add the pipe to the WNTR network.
             wntr_network.add_pipe(
                 "pipe" * i, node_fr, node_to, length = length, diameter = diameter,
-                roughness = roughness, minor_loss = minor_loss, status = "Open")
+                roughness = roughness, minor_loss = minor_loss, initial_status = "OPEN")
         end
     end
 end
@@ -133,7 +136,7 @@ end
 
 function _add_wntr_pumps!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
     for (i, pump) in data["nw"]["1"]["pump"]
-        if pump["status"] == 1
+        if pump["status"] != 0
             # Get pump metadata.
             node_fr, node_to = string(pump["node_fr"]), string(pump["node_to"])
 
@@ -165,11 +168,11 @@ function _add_wntr_short_pipes!(wntr_network::PyCall.PyObject, data::Dict{String
         length, diameter = 1.0e-3, 1.0 # Dummy length and diameter.
         roughness, minor_loss = 100.0, short_pipe["minor_loss"]
 
-        if short_pipe["status"] == 1
+        if short_pipe["status"] != 0
             # Add the short_pipe to the WNTR network.
             wntr_network.add_pipe(
                 "short_pipe" * i, node_fr, node_to, length = length, diameter = diameter,
-                roughness = roughness, minor_loss = minor_loss, status = "Open")
+                roughness = roughness, minor_loss = minor_loss, initial_status = "OPEN")
         end
     end
 end
@@ -182,12 +185,12 @@ function _add_wntr_valves!(wntr_network::PyCall.PyObject, data::Dict{String, Any
         roughness, minor_loss = 100.0, valve["minor_loss"]
         check_valve_flag = string(valve["flow_direction"]) == "POSITIVE"
 
-        if valve["status"] == 1
+        if valve["status"] != 0
             # Add the valve to the WNTR network.
             wntr_network.add_pipe(
                 "valve" * i, node_fr, node_to, length = length, diameter = diameter,
-                roughness = roughness, minor_loss = minor_loss, status = "Open",
-                check_valve_flag = check_valve_flag)
+                roughness = roughness, minor_loss = minor_loss, initial_status = "OPEN",
+                check_valve = check_valve_flag)
         end
     end
 end
@@ -210,11 +213,22 @@ end
 
 
 function _set_wntr_valve_controls(wntr_network::PyCall.PyObject, data::Dict{String, Any}, solution::Dict{String, Any}, time_step::Float64)
+    ## could package this block into a function since it is reused for pump_controls
+    totalsteps = data["duration"]/data["time_step"]
     network_ids = sort([parse(Int, nw) for (nw, nw_sol) in solution["nw"]])
+    # solution might have an extra step to compare results with first timestep -- this step
+    # is irrelevant for the controls
+    if length(network_ids) == totalsteps + 1
+        pop!(network_ids)
+    else
+        error("the solution object has incorrect number of time instances")
+    end
 
     for (n, nw) in enumerate(network_ids)
         for (i, valve) in solution["nw"][string(nw)]["valve"]
-            if data["nw"][string(nw)]["valve"][i]["flow_direction"] == _WM.UNKNOWN
+            # shouldn't flow_direction be of type WM.FLOW_DIRECTION ?? but it is integers in
+            # network instance Byron shared; JJS 4/7/22
+            if data["nw"][string(nw)]["valve"][i]["flow_direction"] == 0
                 wntr_valve_name = "valve" * i
                 wntr_valve = wntr_network.get_link(wntr_valve_name)
                 valve_status = round(valve["status"])
@@ -243,7 +257,15 @@ end
 
 
 function _set_wntr_pump_controls(wntr_network::PyCall.PyObject, data::Dict{String, Any}, solution::Dict{String, Any}, time_step::Float64)
+    totalsteps = data["duration"]/data["time_step"]
     network_ids = sort([parse(Int, nw) for (nw, nw_sol) in solution["nw"]])
+    # solution might have an extra step to compare results with first timestep -- this step
+    # is irrelevant for the controls
+    if length(network_ids) == totalsteps + 1
+        pop!(network_ids)
+    else
+        error("the solution object has incorrect number of time instances")
+    end
 
     for (n, nw) in enumerate(network_ids)
         for (i, pump) in solution["nw"][string(nw)]["pump"]

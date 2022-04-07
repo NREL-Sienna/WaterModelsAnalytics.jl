@@ -122,9 +122,9 @@ end
 create and save a colorbar that represents the node elevations
 """
 function _colarbar(G::PyCall.PyObject, filename::String)
-    elmin = parse(Float64, get(G.graph_attr, "elmin", 0.0))
-    elmax = parse(Float64, get(G.graph_attr, "elmax", 1.0))
-    elmid = elmin + 0.5 * (elmax - elmin)
+    elmin = round( parse(Float64, get(G.graph_attr, "elmin", 0.0)); sigdigits=3)
+    elmax = round( parse(Float64, get(G.graph_attr, "elmax", 1.0)); sigdigits=3)
+    elmid = round( elmin + 0.5 * (elmax - elmin); sigdigits=3)
     
     x = reshape(collect(range(0.0, stop=1.0, length=100)), (1,:))
     Plots.heatmap(x, c=:viridis, size=(500,100), legend=:none, yaxis=false)

@@ -1,4 +1,5 @@
 # TODO:
+# * check for `per_unit = true` and provide a warning or change the value labels
 # - use keyword argument to enable/disable showing indices?
 # - parse the "status" flag for every node and edge? needed for `des_pipes` (design
 #   problem); not sure of other use cases
@@ -244,7 +245,7 @@ function _add_pipe_to_graph!(graph::PyCall.PyObject, pipe::Dict{String, <:Any}, 
         pad = ""
     end
     dir, arrowhead = _get_link_dir(pipe), _get_link_arrowhead(pipe)
-    length = @sprintf("%.5g m", pipe["length"])
+    length = @sprintf("%2.2g m", pipe["length"])
     # save `pad` for use with adding solution labels
     graph.add_edge(pipe["node_fr"], pipe["node_to"], index, dir = dir, headclip = "true",
                    arrowhead = arrowhead, penwidth = penwidth, pad = pad,
@@ -317,9 +318,11 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
         PyCall.set!(nodeobj.attr, "label", label*"\\nh: "*head)
     end
     # add flow to the labels for pipes and valves
-    # Byron added this set, but not all of these fields exist in the solution object
+    # Byron added this set, but not all of these fields exist in the solution object -- this
+    # seems to be still evolving, may want to keep them but put checks in for whether they
+    # exist in the Dict; JJS 4/6/22
     #pipesplus = ["pipe", "des_pipe", "pump", "regulator", "short_pipe", "valve"]
-    links = ["pump", "pipe", "short_pipe", "valve"]
+    links = ["pump", "pipe", "valve"]
     for linktype in links
         for (key,pipesol) in solution[linktype]
             flow = _val_string_cut(pipesol["q"], 1e-10)
