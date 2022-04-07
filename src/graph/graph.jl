@@ -1,4 +1,5 @@
 # TODO:
+# * check for `per_unit = true` and provide a warning or change the value labels
 # - use keyword argument to enable/disable showing indices?
 # - parse the "status" flag for every node and edge? needed for `des_pipes` (design
 #   problem); not sure of other use cases
@@ -8,6 +9,8 @@
 
 
 """
+    build_graph(data, solution=nothing; layout="dot", args="")
+
 Build pygraphviz graph object from a WaterModels network dictionary parsed from an EPANET
 file. If a `solution` dict is provided, it should be for the same time as that of the `data`
 dict. The `layout` option equates to the layout functions of graphviz (dot, neato, etc.) and
@@ -62,6 +65,8 @@ end # function build_graph
 
 
 """
+    update_graph!(G, data, solution=nothing)
+
 Update a graph for a different time. Updates reservoir elevation (aka head), demands, and
 solution information (if provided). 
 """
@@ -97,6 +102,7 @@ function update_graph!(G::PyCall.PyObject, data::Dict{String,Any},
 end
     
 
+# FIXME:  change to _add_nodes!()
 """
 Add nodes to the pygraphviz graph object, including node attributes for name label,
 elevation, and coordinates
@@ -162,6 +168,7 @@ function add_nodes!(G::PyCall.PyObject, nodes::Dict{String,Any})
 end
 
 
+# FIXME:  change to _node_labels!()
 """Add labels for junctions, tanks, and reservoirs."""
 function node_labels!(G::PyCall.PyObject, nodes::Dict{String,Any})
     for (key, node) in nodes
@@ -217,11 +224,11 @@ end
 
 
 function _get_link_dir(link::Dict{String, <:Any})
-    if link["flow_direction"] == _WM.UNKNOWN
+    if link["flow_direction"] == _WM.FLOW_DIRECTION_UNKNOWN
         return "none"
-    elseif link["flow_direction"] == _WM.POSITIVE
+    elseif link["flow_direction"] == _WM.FLOW_DIRECTION_POSITIVE
         return "forward"
-    elseif link["flow_direction"] == _WM.NEGATIVE
+    elseif link["flow_direction"] == _WM.FLOW_DIRECTION_NEGATIVE
         return "back"
     end
 end
@@ -238,7 +245,7 @@ function _add_pipe_to_graph!(graph::PyCall.PyObject, pipe::Dict{String, <:Any}, 
         pad = ""
     end
     dir, arrowhead = _get_link_dir(pipe), _get_link_arrowhead(pipe)
-    length = @sprintf("%.5g m", pipe["length"])
+    length = @sprintf("%2.2g m", pipe["length"])
     # save `pad` for use with adding solution labels
     graph.add_edge(pipe["node_fr"], pipe["node_to"], index, dir = dir, headclip = "true",
                    arrowhead = arrowhead, penwidth = penwidth, pad = pad,
@@ -288,6 +295,7 @@ function _add_valve_to_graph!(graph::PyCall.PyObject, valve::Dict{String, <:Any}
 end
 
 
+#FIXME:  change to _add_solution!()
 """
 add solution values to the node and link labels
 """
@@ -310,9 +318,11 @@ function add_solution!(G::PyCall.PyObject, data::Dict{String,Any},
         PyCall.set!(nodeobj.attr, "label", label*"\\nh: "*head)
     end
     # add flow to the labels for pipes and valves
-    # Byron added this set, but not all of these fields exist in the solution object
+    # Byron added this set, but not all of these fields exist in the solution object -- this
+    # seems to be still evolving, may want to keep them but put checks in for whether they
+    # exist in the Dict; JJS 4/6/22
     #pipesplus = ["pipe", "des_pipe", "pump", "regulator", "short_pipe", "valve"]
-    links = ["pump", "pipe", "short_pipe", "valve"]
+    links = ["pump", "pipe", "valve"]
     for linktype in links
         for (key,pipesol) in solution[linktype]
             flow = _val_string_cut(pipesol["q"], 1e-10)

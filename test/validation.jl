@@ -1,3 +1,7 @@
+## I think we can make more concise tests -- check just one arbitrary element at one
+## arbitrary time? It's better to not be the first element or time unless there is only one
+## JJS 7/21/21
+
 @testset "src/analysis/validation.jl" begin
     time_step_h = network_mn["time_step"]/3600
 
@@ -35,8 +39,8 @@
             tank_node_id = string(network_mn["nw"]["1"]["tank"][i]["node"])
             tank_name = tank_node_id
             diameter = wntr_network.nodes._data[tank_name].diameter
-            tank_df = get_tank_dataframe(network_mn,solution,wntr_network,wntr_result,
-                                         tank_id)
+            tank_df = get_tank_dataframe(tank_id, network_mn,solution, wntr_network,
+                                         wntr_result)
             
             for t in 1:length(tank_df[!, "time"])
                 @test check_difference(tank_df[!, "time"][t], time_step_h*t, tol)
@@ -144,42 +148,6 @@
 
     @testset "compare pumps" begin
         ## check 'compare pumps'
-        function compute_pump_power(pump_obj,q,dh,wntr_data)
-            if pump_obj.efficiency == nothing
-                eff_curve = nothing
-            else
-                eff_curve = wntr_data.get_curve(pump_obj.efficiency).points
-            end
-            if eff_curve != nothing
-                for j in 1:length(eff_curve)
-                    if (j == 1) & (q < eff_curve[j][1])
-                        # use the first Q-eff point when q < q_min on the eff curve
-                        eff = eff_curve[j][2]/100
-                        break
-                    elseif j == length(eff_curve)
-                        # use the last Q-eff point when q > q_max on the eff curve
-                        eff = eff_curve[j][2]/100 
-                    elseif (q >= eff_curve[j][1]) & (q < eff_curve[j+1][1])
-                        # linear interpolation of the efficiency curve
-                        # why not use Interpolations package? see `plots/pumps.jl`, JJS
-                        # 5/13/21
-                        a1 = (eff_curve[j+1][1]-q)/(eff_curve[j+1][1]-eff_curve[j][1])
-                        a2 = (q-eff_curve[j][1])/(eff_curve[j+1][1]-eff_curve[j][1])
-                        eff = (a1*eff_curve[j][2]+a2*eff_curve[j+1][2])/100 
-                        break
-                    end
-                end
-            elseif wntr_data.options.energy.global_efficiency != nothing
-                 # e.g. convert 60 to 60% (0.6)
-                eff = wntr_data.options.energy.global_efficiency/100
-            else
-                Memento.info(_LOGGER, "No pump efficiency provided, 75% is used")
-                eff = 0.75
-            end
-
-            power = _WM._GRAVITY * _WM._DENSITY * dh * q / eff # Watt
-            return power
-        end
 
         for (i,pump_dict) in network_mn["nw"]["1"]["pump"]
             pump_id = i

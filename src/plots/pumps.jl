@@ -1,21 +1,29 @@
 """
+    plot_pumps(pumps; normalized=true, screen=true, reuse=true, savepath=nothing)
+
 Plot the normalized pump curves for the pumps in a network. Displays the plot on the screen
 by default. Use keywords `screen` and `savepath` to control whether to display and/or save
 to file.
 """
-function plot_pumps(pumps::Dict{String,Any}; normalized=true, screen=true, reuse=true,
-                    savepath=nothing)
+function plot_pumps(pumps::Dict{String,Any}; normalized::Bool=true, screen::Bool=true,
+                    reuse::Bool=true, savepath::Union{Nothing, String}=nothing)
     m = 50
     Qhat = Array(range(0.0, 2.0, length=m))
     etahat = -Qhat.^2 .+ 2*Qhat
     Ghat = -1/3*Qhat.^2 .+ 4/3
     Phat = 1/3*Qhat .+ 2/3
 
+    # determine the BEP (if not already calculated)
+    pump = collect(pumps)[1][2]
+    if !("q_bep" in keys(pump))
+        calc_pump_bep!(pumps)
+    end
+    
     p1 = Plots.plot()
     p2 = Plots.plot()
     p3 = Plots.plot()
     plotargs = Dict(:lt=>:scatter, :shape=>:circle, :ms=>6, :msc=>:auto)
-    for (i,(key,pump)) in enumerate(pumps)
+    for (i,(key,pump)) in enumerate(pumps) # does this need enumerate? JJS 6/29/21
         Qbep = pump["q_bep"]
         Gbep = pump["g_bep"]
         Pbep = pump["p_bep"] 

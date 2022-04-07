@@ -98,26 +98,24 @@ end
 include("analysis/utility.jl")
 include("analysis/simulation.jl")
 include("analysis/validation.jl")
-include("analysis/visualization.jl")
 include("analysis/pump_bep.jl")
 
 include("graph/graph.jl")
 include("graph/output.jl")
 
 include("plots/pumps.jl")
+include("plots/nodes.jl")
+include("plots/links.jl")
 
 export build_graph
+export update_graph
 export write_graph
-export colorbar
 export write_visualization
 export write_multi_time_viz
 
 export initialize_wntr_network
-
-export initialize_wntr_network
 export update_wntr_controls
 export simulate_wntr
-
 
 export get_node_dataframe
 export get_tank_dataframe
@@ -125,11 +123,13 @@ export get_pipe_dataframe
 export get_short_pipe_dataframe
 export get_valve_dataframe
 export get_pump_dataframe
+export compute_pump_power
 
-# export compare_tank_head
 export compare_tank_level
 
 export calc_pump_bep!
 export plot_pumps
+export plot_tank
+export plot_tanks
 
 end # module WaterModelsAnalytics
