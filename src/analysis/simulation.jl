@@ -8,6 +8,8 @@
 function _populate_wntr_time_options!(wntr_network::PyCall.PyObject, data::Dict{String, Any})
     # Populate global WNTR time step options.
     wntr_network.options.time.duration = data["duration"]
+    ## it looks like WNTR uses integer values for timesteps except for `report_timestep` JJS
+    ## 4/7/22
     wntr_network.options.time.hydraulic_timestep = data["time_step"]
     wntr_network.options.time.quality_timestep = data["time_step"]
     wntr_network.options.time.rule_timestep = data["time_step"]
